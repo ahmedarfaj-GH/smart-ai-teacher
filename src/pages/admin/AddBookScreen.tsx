@@ -87,10 +87,10 @@ export function AddBookScreen() {
         <TextField label="المصدر" value={source} onChange={setSource} />
 
         <div>
-          <label className="mb-1 block text-sm font-semibold text-gray-700">رفع ملف PDF</label>
+          <label className="mb-1 block text-sm font-semibold text-gray-700">رفع ملف الكتاب (Markdown أو PDF)</label>
           <input
             type="file"
-            accept="application/pdf"
+            accept=".md,application/pdf"
             required
             onChange={(e) => setFile(e.target.files?.[0] ?? null)}
             className="block w-full text-sm text-gray-600 file:mr-3 file:rounded-md file:border-0 file:bg-purple-50 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-purple-700"

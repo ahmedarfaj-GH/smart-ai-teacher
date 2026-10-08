@@ -70,6 +70,31 @@ export interface Lesson {
   status: PublishStatus
 }
 
+// نشاط داخل درس (من ملف الكتاب). kind يحدد واجهة الطالب: قراءة/استماع/حفظ/إملاء/كتابة/تحدث/ورقي/إثرائي.
+export type LessonActivityKind =
+  | 'reading'
+  | 'listening'
+  | 'memorization'
+  | 'dictation'
+  | 'writing'
+  | 'speaking'
+  | 'paper'
+  | 'enrichment'
+
+export interface LessonActivity {
+  id: Id
+  lessonId: Id
+  order: number
+  kind: LessonActivityKind
+  section: 'lesson' | 'assessment' | 'enrichment'
+  title: string
+  page: string
+  content: string
+  teacherNotes: string
+  parentNote: string
+  audioPath?: string // مسار الصوت المولَّد مسبقًا في حاوية lesson-audio
+}
+
 export interface Skill {
   id: Id
   name: string // مثال: "تحليل الكلمات إلى مقاطع" — قابلة لإعادة الاستخدام عبر دروس متعددة

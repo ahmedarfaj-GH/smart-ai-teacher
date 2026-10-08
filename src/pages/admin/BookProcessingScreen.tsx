@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
-import { createBook, createLesson, createUnit } from '../../lib/curriculumRepository'
+import { createBook, createLesson, createLessonActivities, createUnit } from '../../lib/curriculumRepository'
 import { parseBookMarkdown } from '../../lib/bookMarkdownParser'
 import { extractPdfText, type ExtractionProgress } from '../../lib/pdfExtractor'
 import type { Book, Id } from '../../types/entities'
@@ -54,11 +54,12 @@ export function BookProcessingScreen() {
           for (const unit of parseBookMarkdown(text)) {
             const createdUnit = await createUnit(created.id, unit.title)
             for (const lesson of unit.lessons) {
-              await createLesson(createdUnit.id, {
+              const createdLesson = await createLesson(createdUnit.id, {
                 title: lesson.title,
                 contentType: lesson.contentType,
                 pages: lesson.pages,
               })
+              await createLessonActivities(createdLesson.id, lesson.activities)
             }
           }
         }

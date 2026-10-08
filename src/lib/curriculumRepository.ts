@@ -2,7 +2,8 @@
 // يحوّل هذا الملف بين أسماء أعمدة قاعدة البيانات (snake_case) وأنواع الواجهة (camelCase في entities.ts).
 
 import { supabase } from './supabaseClient'
-import type { Book, Id, Lesson, PublishStatus, Unit } from '../types/entities'
+import type { Book, Id, Lesson, LessonActivity, PublishStatus, Unit } from '../types/entities'
+import type { ParsedActivity } from './bookMarkdownParser'
 
 function mapBook(row: Record<string, unknown>): Book {
   return {
@@ -24,6 +25,22 @@ function mapUnit(row: Record<string, unknown>): Unit {
     order: row.order as number,
     title: row.title as string,
     status: row.status as PublishStatus,
+  }
+}
+
+function mapLessonActivity(row: Record<string, unknown>): LessonActivity {
+  return {
+    id: row.id as string,
+    lessonId: row.lesson_id as string,
+    order: row.order as number,
+    kind: row.kind as LessonActivity['kind'],
+    section: row.section as LessonActivity['section'],
+    title: row.title as string,
+    page: row.page as string,
+    content: row.content as string,
+    teacherNotes: row.teacher_notes as string,
+    parentNote: row.parent_note as string,
+    audioPath: (row.audio_path as string | null) ?? undefined,
   }
 }
 
@@ -189,5 +206,30 @@ export async function removeLessonSkill(lessonId: Id, skillId: Id): Promise<void
     .delete()
     .eq('lesson_id', lessonId)
     .eq('skill_id', skillId)
+  if (error) throw error
+}
+
+export async function getLessonActivities(lessonId: Id): Promise<LessonActivity[]> {
+  const { data, error } = await supabase.from('lesson_activities').select('*').eq('lesson_id', lessonId).order('order')
+  if (error) throw error
+  return (data ?? []).map(mapLessonActivity)
+}
+
+// إدخال دفعة واحدة لكل أنشطة الدرس (يُستدعى عند استيراد كتاب Markdown).
+export async function createLessonActivities(lessonId: Id, activities: ParsedActivity[]): Promise<void> {
+  if (activities.length === 0) return
+  const { error } = await supabase.from('lesson_activities').insert(
+    activities.map((a, index) => ({
+      lesson_id: lessonId,
+      order: index + 1,
+      kind: a.kind,
+      section: a.section,
+      title: a.title,
+      page: a.page,
+      content: a.text,
+      teacher_notes: a.teacherNotes,
+      parent_note: a.parentNote,
+    })),
+  )
   if (error) throw error
 }

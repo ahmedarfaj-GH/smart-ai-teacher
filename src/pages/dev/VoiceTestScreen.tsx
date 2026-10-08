@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { isModelReady, preloadVoiceModel, speakWithModel } from '../../lib/mlSpeech'
 
-// أداة اختبار داخلية فقط — لتجربة جودة صوت النموذج المفتوح المصدر (Xenova/mms-tts-ara)
+// أداة اختبار داخلية فقط — لتجربة جودة صوت نموذج Gemini TTS
 // بمعزل عن باقي التطبيق، وبدون الحاجة لصوت عربي مثبّت على الجهاز (النموذج يولّد صوته بنفسه).
 // راجع المرحلة 8 في plan.md — ليست ميزة نهائية للمستخدم.
 
@@ -31,11 +31,11 @@ export function VoiceTestScreen() {
     <div className="mx-auto max-w-xl p-6">
       <h1 className="text-2xl font-bold text-gray-900">اختبار جودة صوت النموذج</h1>
       <p className="mt-2 text-sm text-gray-500">
-        أداة داخلية لتجربة صوت Xenova/mms-tts-ara مباشرة. أول تشغيل يحمّل النموذج (قد يأخذ وقتًا)، وكل نطق
+        أداة داخلية لتجربة صوت Gemini TTS مباشرة (يحتاج VITE_GEMINI_API_KEY في .env)، وكل نطق
         بعده يأخذ عدة ثوانٍ (معالجة حقيقية، لا صوت مُسجَّل مسبقًا).
       </p>
       <button
-        onClick={() => preloadVoiceModel()}
+        onClick={() => preloadVoiceModel().catch(() => undefined)}
         className="mt-4 rounded-lg bg-gray-100 px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-200"
       >
         تحميل النموذج مسبقًا

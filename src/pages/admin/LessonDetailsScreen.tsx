@@ -1,9 +1,20 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { StatusBadge } from '../../components/StatusBadge'
-import { addLessonSkill, getLessonById, getUnitById, removeLessonSkill } from '../../lib/curriculumRepository'
+import { addLessonSkill, getLessonActivities, getLessonById, getUnitById, removeLessonSkill } from '../../lib/curriculumRepository'
 import { getLessonSkillIds, getSkills } from '../../lib/referenceDataRepository'
-import type { Id, Lesson, Skill, Unit } from '../../types/entities'
+import type { Id, Lesson, LessonActivity, LessonActivityKind, Skill, Unit } from '../../types/entities'
+
+const KIND_LABELS: Record<LessonActivityKind, string> = {
+  reading: 'قراءة',
+  listening: 'استماع ونطق',
+  memorization: 'حفظ',
+  dictation: 'إملاء',
+  writing: 'كتابة',
+  speaking: 'تحدث',
+  paper: 'ورقي',
+  enrichment: 'إثرائي',
+}
 
 export function LessonDetailsScreen() {
   const { lessonId } = useParams<{ lessonId: string }>()
@@ -11,6 +22,7 @@ export function LessonDetailsScreen() {
   const [unit, setUnit] = useState<Unit | undefined>(undefined)
   const [skills, setSkills] = useState<Skill[]>([])
   const [linkedSkillIds, setLinkedSkillIds] = useState<Set<Id>>(new Set())
+  const [activities, setActivities] = useState<LessonActivity[]>([])
 
   useEffect(() => {
     if (!lessonId) return
@@ -18,11 +30,13 @@ export function LessonDetailsScreen() {
       const l = await getLessonById(lessonId!)
       setLesson(l ?? null)
       if (l) {
-        const [u, allSkills, linkedIds] = await Promise.all([
+        const [u, allSkills, linkedIds, lessonActivities] = await Promise.all([
           getUnitById(l.unitId),
           getSkills(),
           getLessonSkillIds(l.id),
+          getLessonActivities(l.id),
         ])
+        setActivities(lessonActivities)
         setUnit(u)
         setSkills(allSkills)
         setLinkedSkillIds(new Set(linkedIds))
@@ -86,6 +100,26 @@ export function LessonDetailsScreen() {
           <dd className="text-gray-800">{lesson.pages}</dd>
         </div>
       </dl>
+
+      <div className="mt-6">
+        <h2 className="text-sm font-semibold text-gray-500">الأنشطة ({activities.length})</h2>
+        <ul className="mt-2 flex flex-col gap-2">
+          {activities.map((activity) => (
+            <li key={activity.id} className="rounded-lg border border-gray-200 bg-white p-3 text-sm">
+              <div className="flex items-center gap-2">
+                <span className="rounded-full bg-purple-50 px-2 py-0.5 text-xs font-semibold text-purple-700">
+                  {KIND_LABELS[activity.kind]}
+                </span>
+                {activity.page && <span className="text-xs text-gray-400">ص {activity.page}</span>}
+                <span className="text-gray-800">{activity.title}</span>
+              </div>
+              {activity.content && (
+                <p className="mt-1 line-clamp-2 whitespace-pre-line text-xs text-gray-500">{activity.content}</p>
+              )}
+            </li>
+          ))}
+        </ul>
+      </div>
 
       <div className="mt-6">
         <h2 className="text-sm font-semibold text-gray-500">المهارات المرتبطة</h2>

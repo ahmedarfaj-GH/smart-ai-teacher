@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
-import { createBook } from '../../lib/curriculumRepository'
+import { createBook, createLesson, createLessonActivities, createUnit } from '../../lib/curriculumRepository'
+import { parseBookMarkdown } from '../../lib/bookMarkdownParser'
 import { extractPdfText, type ExtractionProgress } from '../../lib/pdfExtractor'
 import type { Book, Id } from '../../types/entities'
 
@@ -30,9 +31,12 @@ export function BookProcessingScreen() {
 
     async function run() {
       try {
-        const text = await extractPdfText(state!.file, (p) => {
-          if (!cancelled) setProgress(p)
-        })
+        const isMarkdown = state!.file.name.toLowerCase().endsWith('.md')
+        const text = isMarkdown
+          ? await state!.file.text()
+          : await extractPdfText(state!.file, (p) => {
+              if (!cancelled) setProgress(p)
+            })
         if (cancelled) return
         setExtractedText(text)
 
@@ -45,6 +49,20 @@ export function BookProcessingScreen() {
           rawExtractedText: text,
           createdBy: profile!.id,
         })
+        // كتاب Markdown: تُنشأ الوحدات والدروس تلقائيًا من العناوين (مسودة، تُراجع قبل النشر).
+        if (isMarkdown) {
+          for (const unit of parseBookMarkdown(text)) {
+            const createdUnit = await createUnit(created.id, unit.title)
+            for (const lesson of unit.lessons) {
+              const createdLesson = await createLesson(createdUnit.id, {
+                title: lesson.title,
+                contentType: lesson.contentType,
+                pages: lesson.pages,
+              })
+              await createLessonActivities(createdLesson.id, lesson.activities)
+            }
+          }
+        }
         if (!cancelled) setBook(created)
       } catch (err) {
         if (!cancelled) setError(err instanceof Error ? err.message : 'تعذّر معالجة الملف.')
@@ -80,7 +98,7 @@ export function BookProcessingScreen() {
           <p className="text-red-600">{error}</p>
         ) : extracted ? (
           <p className="text-green-700">
-            ✓ تم استخراج النص من {progress?.totalPages} صفحة{done ? ' — وتم إنشاء الكتاب.' : ' — جارِ الحفظ...'}
+            ✓ تمت قراءة الملف{progress ? ` (${progress.totalPages} صفحة)` : ''}{done ? ' — وتم إنشاء الكتاب.' : ' — جارِ الحفظ...'}
           </p>
         ) : progress ? (
           <div>

@@ -9,8 +9,6 @@ const API_KEY = import.meta.env.VITE_GEMINI_API_KEY as string | undefined
 const MODEL_ID = (import.meta.env.VITE_GEMINI_TTS_MODEL as string | undefined) || 'gemini-3.8-flash-tts'
 const VOICE_NAME = 'Schedar'
 const ENDPOINT = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL_ID}:generateContent`
-// Gemini TTS يرجع PCM خام 16-bit mono بتردد 24kHz
-const SAMPLE_RATE = 24000
 
 let audioContext: AudioContext | null = null
 let currentSource: AudioBufferSourceNode | null = null
@@ -40,13 +38,9 @@ export function stopModelSpeech(): void {
   currentSource = null
 }
 
-function pcm16ToAudioBuffer(base64: string): AudioBuffer {
-  const bytes = Uint8Array.from(atob(base64), (c) => c.charCodeAt(0))
-  const pcm = new Int16Array(bytes.buffer, 0, Math.floor(bytes.byteLength / 2))
-  const buffer = getAudioContext().createBuffer(1, pcm.length, SAMPLE_RATE)
-  const channel = buffer.getChannelData(0)
-  for (let i = 0; i < pcm.length; i++) channel[i] = pcm[i] / 32768
-  return buffer
+
+function base64ToArrayBuffer(base64: string): ArrayBuffer {
+  return Uint8Array.from(atob(base64), (c) => c.charCodeAt(0)).buffer
 }
 
 async function synthesize(text: string): Promise<AudioBuffer> {
@@ -70,7 +64,7 @@ async function synthesize(text: string): Promise<AudioBuffer> {
   const base64: string | undefined = data.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data
   if (!base64) throw new Error('الاستجابة لا تحتوي على صوت')
 
-  const buffer = pcm16ToAudioBuffer(base64)
+  const buffer = await getAudioContext().decodeAudioData(base64ToArrayBuffer(base64))
   audioCache.set(text, buffer)
   return buffer
 }

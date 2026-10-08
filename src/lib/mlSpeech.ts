@@ -1,38 +1,29 @@
-// نطق عربي بجودة أعلى عبر نموذج مفتوح المصدر (facebook/mms-tts-ara عبر Transformers.js)
-// يعمل بالكامل داخل المتصفح — بلا خادم، بلا تكلفة. راجع المرحلة 8 في plan.md.
+// نطق عربي بجودة عالية عبر Gemini TTS (REST) — يحل محل النموذج المفتوح المصدر السابق (mms-tts-ara).
+// ملاحظة أمنية: المفتاح VITE_GEMINI_API_KEY يُضمَّن في كود المتصفح، فهذا الإعداد للتجربة المحلية فقط.
+// قبل النشر العام يُنقل الاستدعاء إلى وسيط خادم يحمل المفتاح (سيُناقَش لاحقًا).
 //
-// ترخيص النموذج CC-BY-NC 4.0 (غير تجاري) — مقبول لأن هذا مشروع داخلي غير تجاري (تأكد مع المستخدم).
-// أول استخدام يحمّل النموذج (~ميجابايتات) ويُخزَّن بذاكرة المتصفح بعدها — الاستخدامات التالية فورية.
+// الواجهة المصدَّرة (speakWithModel / isModelReady / preloadVoiceModel / stopModelSpeech) بقيت كما هي
+// حتى لا تتأثر الشاشات المستهلِكة.
 
-import { pipeline, type TextToAudioPipeline } from '@huggingface/transformers'
+const API_KEY = import.meta.env.VITE_GEMINI_API_KEY as string | undefined
+const MODEL_ID = (import.meta.env.VITE_GEMINI_TTS_MODEL as string | undefined) || 'gemini-3.8-flash-tts'
+const VOICE_NAME = 'Schedar'
+const ENDPOINT = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL_ID}:generateContent`
+// Gemini TTS يرجع PCM خام 16-bit mono بتردد 24kHz
+const SAMPLE_RATE = 24000
 
-const MODEL_ID = 'Xenova/mms-tts-ara'
-
-let pipelinePromise: Promise<TextToAudioPipeline> | null = null
-let modelReady = false
 let audioContext: AudioContext | null = null
 let currentSource: AudioBufferSourceNode | null = null
+// كل طلب مدفوع — نخزّن الصوت لكل نص حتى لا نعيد طلب نفس الجملة (مثل إعادة التلميح).
+const audioCache = new Map<string, AudioBuffer>()
 
-function getPipeline(): Promise<TextToAudioPipeline> {
-  if (!pipelinePromise) {
-    pipelinePromise = (pipeline('text-to-speech', MODEL_ID, { dtype: 'fp32' }) as Promise<TextToAudioPipeline>).then(
-      (p) => {
-        modelReady = true
-        return p
-      },
-    )
-  }
-  return pipelinePromise
-}
-
-// استدعِها مبكرًا (مثلاً عند فتح شاشة الجلسة) حتى يبدأ تحميل النموذج بالتوازي قبل أول جملة.
-export function preloadVoiceModel(): Promise<TextToAudioPipeline> {
-  return getPipeline()
-}
-
-// فحص متزامن: هل النموذج جاهز الآن للنطق الفوري بلا انتظار تحميل؟
+// لا يوجد تحميل نموذج هنا — "الجاهزية" تعني فقط وجود المفتاح.
 export function isModelReady(): boolean {
-  return modelReady
+  return Boolean(API_KEY)
+}
+
+export function preloadVoiceModel(): Promise<void> {
+  return API_KEY ? Promise.resolve() : Promise.reject(new Error('VITE_GEMINI_API_KEY غير مضبوط'))
 }
 
 function getAudioContext(): AudioContext {
@@ -49,28 +40,57 @@ export function stopModelSpeech(): void {
   currentSource = null
 }
 
-function playAudio(samples: ArrayLike<number>, samplingRate: number): void {
-  stopModelSpeech()
-  const ctx = getAudioContext()
-  const buffer = ctx.createBuffer(1, samples.length, samplingRate)
-  buffer.copyToChannel(Float32Array.from(samples), 0)
-  const source = ctx.createBufferSource()
-  source.buffer = buffer
-  source.connect(ctx.destination)
-  source.start()
-  currentSource = source
+function pcm16ToAudioBuffer(base64: string): AudioBuffer {
+  const bytes = Uint8Array.from(atob(base64), (c) => c.charCodeAt(0))
+  const pcm = new Int16Array(bytes.buffer, 0, Math.floor(bytes.byteLength / 2))
+  const buffer = getAudioContext().createBuffer(1, pcm.length, SAMPLE_RATE)
+  const channel = buffer.getChannelData(0)
+  for (let i = 0; i < pcm.length; i++) channel[i] = pcm[i] / 32768
+  return buffer
 }
 
-// ترجع true لو نجح النطق بالنموذج، false لو فشل (حتى يستخدم المستدعي صوت المتصفح كبديل).
+async function synthesize(text: string): Promise<AudioBuffer> {
+  const cached = audioCache.get(text)
+  if (cached) return cached
+
+  const response = await fetch(ENDPOINT, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'x-goog-api-key': API_KEY as string },
+    body: JSON.stringify({
+      contents: [{ parts: [{ text }] }],
+      generationConfig: {
+        responseModalities: ['AUDIO'],
+        speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: VOICE_NAME } } },
+      },
+    }),
+  })
+  if (!response.ok) throw new Error(`Gemini TTS ${response.status}: ${await response.text()}`)
+
+  const data = await response.json()
+  const base64: string | undefined = data.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data
+  if (!base64) throw new Error('الاستجابة لا تحتوي على صوت')
+
+  const buffer = pcm16ToAudioBuffer(base64)
+  audioCache.set(text, buffer)
+  return buffer
+}
+
+// ترجع true لو نجح النطق، false لو فشل (حتى يستخدم المستدعي صوت المتصفح كبديل).
 export async function speakWithModel(text: string): Promise<boolean> {
+  if (!API_KEY) return false
   try {
-    const synthesizer = await getPipeline()
-    const output = await synthesizer(text)
-    const audio = Array.isArray(output.audio) ? output.audio[0] : output.audio
-    playAudio(audio, output.sampling_rate)
+    const buffer = await synthesize(text)
+    stopModelSpeech()
+    const ctx = getAudioContext()
+    await ctx.resume()
+    const source = ctx.createBufferSource()
+    source.buffer = buffer
+    source.connect(ctx.destination)
+    source.start()
+    currentSource = source
     return true
   } catch (err) {
-    console.error('فشل النطق بالنموذج المفتوح المصدر:', err)
+    console.error('فشل النطق عبر Gemini TTS:', err)
     return false
   }
 }

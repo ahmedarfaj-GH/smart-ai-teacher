@@ -1,7 +1,7 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
-import { createBook, createLesson, createLessonActivities, createUnit } from '../../lib/curriculumRepository'
+import { createBook, importParsedBook } from '../../lib/curriculumRepository'
 import { parseBookMarkdown } from '../../lib/bookMarkdownParser'
 import { extractPdfText, type ExtractionProgress } from '../../lib/pdfExtractor'
 import type { Book, Id } from '../../types/entities'
@@ -24,10 +24,13 @@ export function BookProcessingScreen() {
   const [extractedText, setExtractedText] = useState<string | null>(null)
   const [book, setBook] = useState<Book | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [imported, setImported] = useState<{ units: number; lessons: number; activities: number } | null>(null)
+  const startedRef = useRef(false)
 
   useEffect(() => {
-    if (!state?.file || !profile) return
-    let cancelled = false
+    // حارس: نبدأ الاستيراد مرة واحدة فقط حتى لو أعاد React تشغيل الـ effect (تحديث الجلسة/StrictMode) فلا يتكرر الكتاب.
+    if (!state?.file || !profile || startedRef.current) return
+    startedRef.current = true
 
     async function run() {
       try {
@@ -35,9 +38,8 @@ export function BookProcessingScreen() {
         const text = isMarkdown
           ? await state!.file.text()
           : await extractPdfText(state!.file, (p) => {
-              if (!cancelled) setProgress(p)
+              setProgress(p)
             })
-        if (cancelled) return
         setExtractedText(text)
 
         const created = await createBook({
@@ -49,30 +51,19 @@ export function BookProcessingScreen() {
           rawExtractedText: text,
           createdBy: profile!.id,
         })
-        // كتاب Markdown: تُنشأ الوحدات والدروس تلقائيًا من العناوين (مسودة، تُراجع قبل النشر).
+        // كتاب Markdown: تُنشأ الوحدات والدروس والأنشطة من العناوين (مسودة، تُراجع قبل النشر).
         if (isMarkdown) {
-          for (const unit of parseBookMarkdown(text)) {
-            const createdUnit = await createUnit(created.id, unit.title)
-            for (const lesson of unit.lessons) {
-              const createdLesson = await createLesson(createdUnit.id, {
-                title: lesson.title,
-                contentType: lesson.contentType,
-                pages: lesson.pages,
-              })
-              await createLessonActivities(createdLesson.id, lesson.activities)
-            }
-          }
+          const counts = await importParsedBook(created.id, parseBookMarkdown(text))
+          setImported(counts)
         }
-        if (!cancelled) setBook(created)
+        setBook(created)
       } catch (err) {
-        if (!cancelled) setError(err instanceof Error ? err.message : 'تعذّر معالجة الملف.')
+        // أخطاء Supabase كائنات عادية فيها message (ليست Error) — نعرض رسالتها الفعلية.
+        setError(typeof err === 'object' && err && 'message' in err ? String(err.message) : 'تعذّر معالجة الملف.')
       }
     }
 
     run()
-    return () => {
-      cancelled = true
-    }
   }, [state?.file, profile])
 
   if (!state?.file) {
@@ -98,7 +89,11 @@ export function BookProcessingScreen() {
           <p className="text-red-600">{error}</p>
         ) : extracted ? (
           <p className="text-green-700">
-            ✓ تمت قراءة الملف{progress ? ` (${progress.totalPages} صفحة)` : ''}{done ? ' — وتم إنشاء الكتاب.' : ' — جارِ الحفظ...'}
+            ✓ تمت قراءة الملف{progress ? ` (${progress.totalPages} صفحة)` : ''}{done
+              ? imported
+                ? ` — وتم إنشاء ${imported.units} وحدات و${imported.lessons} درسًا و${imported.activities} نشاطًا.`
+                : ' — وتم إنشاء الكتاب.'
+              : ' — جارِ الحفظ...'}
           </p>
         ) : progress ? (
           <div>

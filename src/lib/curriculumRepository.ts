@@ -3,7 +3,7 @@
 
 import { supabase } from './supabaseClient'
 import type { Book, Id, Lesson, LessonActivity, PublishStatus, Unit } from '../types/entities'
-import type { ParsedActivity } from './bookMarkdownParser'
+import type { ParsedUnit } from './bookMarkdownParser'
 
 function mapBook(row: Record<string, unknown>): Book {
   return {
@@ -215,21 +215,52 @@ export async function getLessonActivities(lessonId: Id): Promise<LessonActivity[
   return (data ?? []).map(mapLessonActivity)
 }
 
-// إدخال دفعة واحدة لكل أنشطة الدرس (يُستدعى عند استيراد كتاب Markdown).
-export async function createLessonActivities(lessonId: Id, activities: ParsedActivity[]): Promise<void> {
-  if (activities.length === 0) return
-  const { error } = await supabase.from('lesson_activities').insert(
-    activities.map((a, index) => ({
-      lesson_id: lessonId,
-      order: index + 1,
-      kind: a.kind,
-      section: a.section,
-      title: a.title,
-      page: a.page,
-      content: a.text,
-      teacher_notes: a.teacherNotes,
-      parent_note: a.parentNote,
+// استيراد كتاب Markdown كاملًا بأربعة طلبات فقط (وحدات ← دروس ← أنشطة) بدل مئات الطلبات المتتابعة.
+export async function importParsedBook(
+  bookId: Id,
+  units: ParsedUnit[],
+): Promise<{ units: number; lessons: number; activities: number }> {
+  const { data: unitRows, error: unitError } = await supabase
+    .from('units')
+    .insert(units.map((u, i) => ({ book_id: bookId, title: u.title, order: i + 1, status: 'draft' })))
+    .select('id, order')
+  if (unitError) throw unitError
+  const unitIdByOrder = new Map((unitRows ?? []).map((r) => [r.order as number, r.id as string]))
+
+  const lessonRows = units.flatMap((u, ui) =>
+    u.lessons.map((l, li) => ({
+      unit_id: unitIdByOrder.get(ui + 1),
+      title: l.title,
+      order: li + 1,
+      content_type: l.contentType,
+      pages: l.pages,
+      status: 'draft',
     })),
   )
-  if (error) throw error
+  const { data: createdLessons, error: lessonError } = await supabase
+    .from('lessons')
+    .insert(lessonRows)
+    .select('id, unit_id, order')
+  if (lessonError) throw lessonError
+  const lessonIdByKey = new Map((createdLessons ?? []).map((r) => [`${r.unit_id}:${r.order}`, r.id as string]))
+
+  const activityRows = units.flatMap((u, ui) =>
+    u.lessons.flatMap((l, li) =>
+      l.activities.map((a, ai) => ({
+        lesson_id: lessonIdByKey.get(`${unitIdByOrder.get(ui + 1)}:${li + 1}`),
+        order: ai + 1,
+        kind: a.kind,
+        section: a.section,
+        title: a.title,
+        page: a.page,
+        content: a.text,
+        teacher_notes: a.teacherNotes,
+        parent_note: a.parentNote,
+      })),
+    ),
+  )
+  const { error: activityError } = await supabase.from('lesson_activities').insert(activityRows)
+  if (activityError) throw activityError
+
+  return { units: units.length, lessons: lessonRows.length, activities: activityRows.length }
 }

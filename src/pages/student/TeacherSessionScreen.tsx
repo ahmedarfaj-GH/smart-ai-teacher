@@ -3,10 +3,11 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { HandwritingPad } from '../../components/HandwritingPad'
 import { TeacherAvatar } from '../../components/TeacherAvatar'
 import { getActivityItems, KIND_SKILL_NAME, toMatchTarget } from '../../lib/activityItems'
-import { loadAudioCache, playCachedAudio, stopCachedAudio } from '../../lib/audioCache'
+import { loadAudioCache, playSpeechAudio, stopCachedAudio } from '../../lib/audioCache'
 import { getLessonActivities } from '../../lib/curriculumRepository'
 import { checkHandwriting, isHandwritingCheckAvailable } from '../../lib/handwritingCheck'
 import { endSession, getNextSessionPlan, getStudentSkills, recordAttempt, startSession } from '../../lib/learningEngine'
+import { isModelReady } from '../../lib/mlSpeech'
 import { getSkills, getSubjects, getTeachers } from '../../lib/referenceDataRepository'
 import { getLessonForSession } from '../../lib/sessionContent'
 import {
@@ -56,7 +57,6 @@ export function TeacherSessionScreen() {
   const [busy, setBusy] = useState(false)
   const [begun, setBegun] = useState(false) // الطفل يضغط "يلا نبدأ" بعد ترحيب أحمد
   const [arabicVoiceAvailable, setArabicVoiceAvailable] = useState<boolean | null>(null)
-  const [cachedAudioCount, setCachedAudioCount] = useState(0)
 
   function sayText(shown: string, spoken = shown) {
     setSay({ shown, spoken })
@@ -120,9 +120,8 @@ export function TeacherSessionScreen() {
         }
       }
 
-      // الصوت المحفوظ مسبقًا لنصوص الدرس وعبارات أحمد الثابتة (طلب واحد). ما ليس محفوظًا يُنطق بصوت المتصفح المجاني.
-      const allTexts = [...planned.flatMap((p) => p.items), ...TeacherEngine.getFixedPhrases()]
-      setCachedAudioCount(await loadAudioCache(allTexts).catch(() => 0))
+      // نحمّل الصوت المحفوظ لنصوص الدرس وعبارات أحمد الثابتة (طلب واحد)؛ وما ليس محفوظًا يُولَّد عند أول نطق ويُحفظ للجميع.
+      await loadAudioCache([...planned.flatMap((p) => p.items), ...TeacherEngine.getFixedPhrases()]).catch(() => 0)
 
       setSessionId(session.id)
       setPlans(queue)
@@ -135,11 +134,11 @@ export function TeacherSessionScreen() {
   const current = plans[activityIndex]
   const currentItem = current?.items[itemIndex]
 
-  // الأولوية للصوت المحفوظ (بلا أي تكلفة)، ثم صوت المتصفح.
+  // الصوت المحفوظ (يُولَّد ويُحفظ أول مرة فقط)، وإن تعذّر يُنطق بصوت المتصفح المجاني.
   async function speakBest(text: string) {
     stopSpeaking()
     stopCachedAudio()
-    if (await playCachedAudio(text)) return
+    if (await playSpeechAudio(text)) return
     speak(text)
   }
 
@@ -300,7 +299,7 @@ export function TeacherSessionScreen() {
         <span className="flex-1">{say.shown}</span>
       </div>
 
-      {arabicVoiceAvailable === false && cachedAudioCount === 0 && (
+      {arabicVoiceAvailable === false && !isModelReady() && (
         <p className="w-full rounded-lg bg-amber-50 p-3 text-center text-xs text-amber-700">
           صوت أحمد غير متاح: لا يوجد صوت عربي مثبّت على هذا الجهاز. اطلب من بابا أو ماما تثبيت صوت عربي من إعدادات الجهاز.
         </p>

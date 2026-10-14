@@ -15,12 +15,26 @@ function getDiagnosticIntro(studentName: string): string {
   return `هلا ${studentName} 👋 خلنا نسوي كم تحدي بسيط عشان أعرف الأشياء اللي تعرفها.`
 }
 
+// عبارات ثابتة (بلا اسم الطالب أو محتوى الدرس) — صوتها يُولَّد مسبقًا مرة واحدة (راجع audioCache.ts).
+const ENCOURAGEMENTS = ['قريب! جرب مرة ثانية.', 'كفو، حاول مرة ثانية.', 'قربت تضبطها، جرب مرة ثانية.']
+const PRAISES = ['ممتاز! 🌟', 'أحسنت!', 'كفو عليك!', 'شغل رائع!']
+const NEXT_ACTIVITY_INTROS = ['خلنا نجرب هذي.', 'جاهز؟ هذا السؤال الجاي.', 'يلا نكمل.']
+const NOT_HEARD = 'ما سمعتك، جرب مرة ثانية.'
+
 function getEncouragement(): string {
-  return pickRandom(['قريب! جرب مرة ثانية.', 'كفو، حاول مرة ثانية.', 'قربت تضبطها، جرب مرة ثانية.'])
+  return pickRandom(ENCOURAGEMENTS)
 }
 
 function getPraise(): string {
-  return pickRandom(['ممتاز! 🌟', 'أحسنت!', 'كفو عليك!', 'شغل رائع!'])
+  return pickRandom(PRAISES)
+}
+
+function getNotHeard(): string {
+  return NOT_HEARD
+}
+
+function getFixedPhrases(): string[] {
+  return [...ENCOURAGEMENTS, ...PRAISES, ...NEXT_ACTIVITY_INTROS, NOT_HEARD]
 }
 
 function getHint(level: 1 | 2, hintText: string): string {
@@ -36,7 +50,7 @@ function getOutOfScopeResponse(): string {
 }
 
 function getNextActivityIntro(): string {
-  return pickRandom(['خلنا نجرب هذي.', 'جاهز؟ هذا السؤال الجاي.', 'يلا نكمل.'])
+  return pickRandom(NEXT_ACTIVITY_INTROS)
 }
 
 function getReviewIntro(skillName: string): string {
@@ -72,6 +86,8 @@ export const TeacherEngine = {
   getDiagnosticIntro,
   getEncouragement,
   getPraise,
+  getNotHeard,
+  getFixedPhrases,
   getHint,
   getGentleExplanationAndMoveOn,
   getOutOfScopeResponse,

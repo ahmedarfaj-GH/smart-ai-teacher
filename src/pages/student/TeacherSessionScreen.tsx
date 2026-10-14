@@ -3,10 +3,10 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { HandwritingPad } from '../../components/HandwritingPad'
 import { TeacherAvatar } from '../../components/TeacherAvatar'
 import { getActivityItems, KIND_SKILL_NAME, toMatchTarget } from '../../lib/activityItems'
+import { loadAudioCache, playCachedAudio, stopCachedAudio } from '../../lib/audioCache'
 import { getLessonActivities } from '../../lib/curriculumRepository'
 import { checkHandwriting, isHandwritingCheckAvailable } from '../../lib/handwritingCheck'
 import { endSession, getNextSessionPlan, getStudentSkills, recordAttempt, startSession } from '../../lib/learningEngine'
-import { isModelReady, preloadVoiceModel, speakWithModel, stopModelSpeech } from '../../lib/mlSpeech'
 import { getSkills, getSubjects, getTeachers } from '../../lib/referenceDataRepository'
 import { getLessonForSession } from '../../lib/sessionContent'
 import {
@@ -56,7 +56,7 @@ export function TeacherSessionScreen() {
   const [busy, setBusy] = useState(false)
   const [begun, setBegun] = useState(false) // الطفل يضغط "يلا نبدأ" بعد ترحيب أحمد
   const [arabicVoiceAvailable, setArabicVoiceAvailable] = useState<boolean | null>(null)
-  const [mlModelFailed, setMlModelFailed] = useState(false)
+  const [cachedAudioCount, setCachedAudioCount] = useState(0)
 
   function sayText(shown: string, spoken = shown) {
     setSay({ shown, spoken })
@@ -64,7 +64,6 @@ export function TeacherSessionScreen() {
 
   useEffect(() => {
     hasArabicVoice().then(setArabicVoiceAvailable)
-    preloadVoiceModel().catch(() => setMlModelFailed(true))
   }, [])
 
   // ref guard: نبدأ الجلسة مرة واحدة فقط، حتى مع الاستدعاء المزدوج لـ React StrictMode في وضع التطوير.
@@ -121,6 +120,10 @@ export function TeacherSessionScreen() {
         }
       }
 
+      // الصوت المحفوظ مسبقًا لنصوص الدرس وعبارات أحمد الثابتة (طلب واحد). ما ليس محفوظًا يُنطق بصوت المتصفح المجاني.
+      const allTexts = [...planned.flatMap((p) => p.items), ...TeacherEngine.getFixedPhrases()]
+      setCachedAudioCount(await loadAudioCache(allTexts).catch(() => 0))
+
       setSessionId(session.id)
       setPlans(queue)
       sayText(intro)
@@ -132,13 +135,11 @@ export function TeacherSessionScreen() {
   const current = plans[activityIndex]
   const currentItem = current?.items[itemIndex]
 
+  // الأولوية للصوت المحفوظ (بلا أي تكلفة)، ثم صوت المتصفح.
   async function speakBest(text: string) {
     stopSpeaking()
-    stopModelSpeech()
-    if (isModelReady()) {
-      const ok = await speakWithModel(text)
-      if (ok) return
-    }
+    stopCachedAudio()
+    if (await playCachedAudio(text)) return
     speak(text)
   }
 
@@ -150,7 +151,7 @@ export function TeacherSessionScreen() {
   useEffect(() => {
     return () => {
       stopSpeaking()
-      stopModelSpeech()
+      stopCachedAudio()
     }
   }, [])
 
@@ -209,7 +210,7 @@ export function TeacherSessionScreen() {
     try {
       handleItemResult(isCloseMatch(await listenOnce(), toMatchTarget(currentItem)))
     } catch {
-      sayText('ما سمعتك، جرب مرة ثانية.')
+      sayText(TeacherEngine.getNotHeard())
     } finally {
       setBusy(false)
     }
@@ -299,7 +300,7 @@ export function TeacherSessionScreen() {
         <span className="flex-1">{say.shown}</span>
       </div>
 
-      {arabicVoiceAvailable === false && mlModelFailed && (
+      {arabicVoiceAvailable === false && cachedAudioCount === 0 && (
         <p className="w-full rounded-lg bg-amber-50 p-3 text-center text-xs text-amber-700">
           صوت أحمد غير متاح: لا يوجد صوت عربي مثبّت على هذا الجهاز. اطلب من بابا أو ماما تثبيت صوت عربي من إعدادات الجهاز.
         </p>

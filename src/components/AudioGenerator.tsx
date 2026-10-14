@@ -1,5 +1,5 @@
-// توليد صوت الكتاب مرة واحدة: يجمع نصوص مسار القراءة (قراءة/استماع/تحدث) وعبارات أحمد الثابتة،
-// ويولّد ما ليس محفوظًا فقط ويحفظه في Storage. بعدها لا يدفع التطبيق ثمن أي تشغيل لهذه النصوص.
+// توليد مسبق لصوت الكتاب (اختياري): يجمع نصوص مسار القراءة (قراءة/استماع/تحدث) وعبارات أحمد الثابتة،
+// ويولّد ما ليس محفوظًا فقط. وأي نص لم يُولَّد هنا يُولَّد تلقائيًا عند أول تشغيل له من أي مستخدم ويُحفظ للجميع.
 import { useEffect, useRef, useState } from 'react'
 import { getActivityItems } from '../lib/activityItems'
 import { countCached, generateAndStoreAudio } from '../lib/audioCache'
@@ -60,7 +60,7 @@ export function AudioGenerator({ bookId }: { bookId: Id }) {
   const missing = texts.length - cached
   return (
     <div className="mt-6 rounded-xl border border-gray-200 bg-white p-4">
-      <h2 className="text-sm font-semibold text-gray-700">صوت أحمد (يُولَّد مرة واحدة ويُحفظ)</h2>
+      <h2 className="text-sm font-semibold text-gray-700">صوت أحمد (يُولَّد مرة واحدة ويُحفظ للجميع)</h2>
       <p className="mt-1 text-sm text-gray-500">
         مسار القراءة وعبارات أحمد الثابتة: {texts.length} نصًّا — الجاهز {cached} — الناقص {Math.max(missing, 0)}
       </p>

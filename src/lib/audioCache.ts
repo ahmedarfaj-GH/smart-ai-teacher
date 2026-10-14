@@ -1,6 +1,7 @@
-// ذاكرة الصوت: كل نص يُولَّد صوته مرة واحدة (بواسطة الأدمن) ويُحفظ في حاوية lesson-audio، ثم يُشغَّل للجميع من الرابط
-// بلا أي استدعاء مدفوع. المفتاح بصمة SHA-256 لـ "model|voice|text" فالنص المتكرر بين الدروس يُولَّد مرة واحدة.
-// الطالب لا يولّد ولا يكتب شيئًا: إن لم يوجد النص في الذاكرة يرجع التطبيق لصوت المتصفح المجاني.
+// ذاكرة الصوت: كل نص يُولَّد صوته مرة واحدة (من أي مستخدم مسجّل عند أول طلب، أو بالتوليد الجماعي من الأدمن)
+// ويُحفظ في حاوية lesson-audio، ثم يُشغَّل للجميع من الرابط بلا أي استدعاء مدفوع.
+// المفتاح بصمة SHA-256 لـ "model|voice|text" فالنص المتكرر بين الدروس يُولَّد مرة واحدة.
+// صلاحيات الإضافة في القاعدة مقيّدة بالإضافة فقط (راجع migrations/004_audio_on_demand.sql).
 
 import { supabase } from './supabaseClient'
 import { synthesizeWavBlob, TTS_MODEL, TTS_VOICE } from './mlSpeech'
@@ -38,49 +39,81 @@ export function stopCachedAudio(): void {
   currentAudio = null
 }
 
-// ترجع true إن كان للنص صوت محفوظ وبدأ تشغيله، وإلا false ليستخدم المستدعي صوت المتصفح.
-export async function playCachedAudio(text: string): Promise<boolean> {
-  const url = urlByHash.get(await hashText(text))
-  if (!url) return false
-  stopCachedAudio()
-  const audio = new Audio(url)
-  currentAudio = audio
+// طلبات التوليد الجارية (بصمة → وعد): يمنع توليد النص نفسه مرتين من الصفحة نفسها (تشغيل + إعادة تشغيل).
+const inflight = new Map<string, Promise<{ url: string; generated: boolean }>>()
+
+// رابط صوت النص: من الذاكرة المحملة، ثم من القاعدة (قد يكون مستخدم آخر ولّده)، وإلا يُولَّد ويُحفظ للجميع.
+async function ensureAudio(text: string): Promise<{ url: string; generated: boolean }> {
+  const trimmed = text.trim()
+  const hash = await hashText(trimmed)
+
+  const known = urlByHash.get(hash)
+  if (known) return { url: known, generated: false }
+
+  const pending = inflight.get(hash)
+  if (pending) return pending
+
+  const work = (async () => {
+    const { data: existing, error: lookupError } = await supabase
+      .from('audio_cache')
+      .select('path')
+      .eq('text_hash', hash)
+      .maybeSingle()
+    if (lookupError) throw lookupError
+    if (existing) {
+      const url = publicUrl(existing.path as string)
+      urlByHash.set(hash, url)
+      return { url, generated: false }
+    }
+
+    const blob = await synthesizeWavBlob(trimmed)
+    const path = `tts/${hash}.wav`
+    // الحفظ للجميع إضافة فقط؛ إن سبقنا مستخدم آخر (الملف موجود) نكمل بلا خطأ.
+    const { error: uploadError } = await supabase.storage.from(BUCKET).upload(path, blob, { contentType: 'audio/wav' })
+    if (uploadError && !/already exists|Duplicate/i.test(uploadError.message)) throw uploadError
+
+    const { error: insertError } = await supabase
+      .from('audio_cache')
+      .upsert(
+        { text_hash: hash, text: trimmed, voice: TTS_VOICE, model: TTS_MODEL, path, bytes: blob.size },
+        { onConflict: 'text_hash', ignoreDuplicates: true },
+      )
+    if (insertError) throw insertError
+
+    const url = publicUrl(path)
+    urlByHash.set(hash, url)
+    return { url, generated: true }
+  })()
+
+  inflight.set(hash, work)
   try {
+    return await work
+  } finally {
+    inflight.delete(hash)
+  }
+}
+
+// ينطق النص بالصوت المحفوظ، ويولّده ويحفظه أولًا إن لم يكن موجودًا. ترجع false عند أي فشل
+// (مفتاح غائب، حد استخدام، شبكة) ليستخدم المستدعي صوت المتصفح كبديل.
+export async function playSpeechAudio(text: string): Promise<boolean> {
+  try {
+    const { url } = await ensureAudio(text)
+    stopCachedAudio()
+    const audio = new Audio(url)
+    currentAudio = audio
     await audio.play()
     return true
-  } catch {
+  } catch (err) {
+    console.error('تعذّر تشغيل الصوت:', err)
     return false
   }
 }
 
 export type GenerateResult = 'generated' | 'already-cached'
 
-// للأدمن فقط (الكتابة في Storage وaudio_cache محمية بصلاحية الأدمن): يولّد الصوت إن لم يكن محفوظًا.
+// للتوليد الجماعي من شاشة الأدمن: يولّد الصوت إن لم يكن محفوظًا.
 export async function generateAndStoreAudio(text: string): Promise<GenerateResult> {
-  const trimmed = text.trim()
-  const hash = await hashText(trimmed)
-
-  const { data: existing, error: lookupError } = await supabase
-    .from('audio_cache')
-    .select('text_hash')
-    .eq('text_hash', hash)
-    .maybeSingle()
-  if (lookupError) throw lookupError
-  if (existing) return 'already-cached'
-
-  const blob = await synthesizeWavBlob(trimmed)
-  const path = `tts/${hash}.wav`
-  const { error: uploadError } = await supabase.storage.from(BUCKET).upload(path, blob, {
-    contentType: 'audio/wav',
-    upsert: true,
-  })
-  if (uploadError) throw uploadError
-
-  const { error: insertError } = await supabase
-    .from('audio_cache')
-    .insert({ text_hash: hash, text: trimmed, voice: TTS_VOICE, model: TTS_MODEL, path, bytes: blob.size })
-  if (insertError) throw insertError
-  return 'generated'
+  return (await ensureAudio(text)).generated ? 'generated' : 'already-cached'
 }
 
 // كم نصًّا من القائمة له صوت محفوظ (للأدمن، لعرض التقدم).

@@ -209,6 +209,15 @@ export async function removeLessonSkill(lessonId: Id, skillId: Id): Promise<void
   if (error) throw error
 }
 
+export async function getBookActivities(bookId: Id): Promise<LessonActivity[]> {
+  const { data, error } = await supabase
+    .from('lesson_activities')
+    .select('*, lessons!inner(units!inner(book_id))')
+    .eq('lessons.units.book_id', bookId)
+  if (error) throw error
+  return (data ?? []).map(mapLessonActivity)
+}
+
 export async function getLessonActivities(lessonId: Id): Promise<LessonActivity[]> {
   const { data, error } = await supabase.from('lesson_activities').select('*').eq('lesson_id', lessonId).order('order')
   if (error) throw error

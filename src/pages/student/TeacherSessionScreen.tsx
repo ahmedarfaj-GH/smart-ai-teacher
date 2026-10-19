@@ -72,9 +72,12 @@ export function TeacherSessionScreen() {
       await loadAudioCache([...planned.flatMap((p) => p.items), ...TeacherEngine.getFixedPhrases()]).catch(() => 0)
 
       const session = await startSession(s.id, subject.id)
+      const welcome = TeacherEngine.getWelcomeMessage(currentTeacher.name, s.name)
       setSessionId(session.id)
       setPlans(planned)
-      setSay(TeacherEngine.getWelcomeMessage(currentTeacher.name, s.name))
+      setSay(welcome)
+      // نجهّز في الخلفية صوت الترحيب وكل أسطر الجلسة (بالتتابع)، حتى لا ينتظر الطفل توليدها عند الضغط.
+      prefetchAudio([welcome, ...planned.flatMap((p) => p.items)])
     }
 
     setup()
@@ -86,8 +89,9 @@ export function TeacherSessionScreen() {
   // الصوت الوحيد: صوت أحمد المحفوظ (يُولَّد ويُحفظ أول مرة فقط). لا صوت بديل؛ عند الفشل يظهر زر إعادة المحاولة.
   async function speakBest(text: string) {
     setAudioFailed(false)
-    setAudioLoading(true)
+    const timer = setTimeout(() => setAudioLoading(true), 900) // لا نُظهر المؤشر إلا إن طال التجهيز
     const ok = await playSpeechAudio(text)
+    clearTimeout(timer)
     setAudioLoading(false)
     if (!ok) setAudioFailed(true)
   }

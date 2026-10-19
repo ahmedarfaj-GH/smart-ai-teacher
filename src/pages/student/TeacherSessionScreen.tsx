@@ -3,9 +3,10 @@ import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { TeacherAvatar } from '../../components/TeacherAvatar'
 import { getActivityItems, isSessionActivity } from '../../lib/activityItems'
 import { loadAudioCache, playSpeechAudio, prefetchAudio, stopAudio } from '../../lib/audioCache'
-import { getLessonActivities, getLessonById } from '../../lib/curriculumRepository'
+import { getLessonActivities, getLessonById, getUnitById } from '../../lib/curriculumRepository'
 import { endSession, startSession } from '../../lib/learningEngine'
 import { getFinishedActivityIds, getLastFinishedLessonId, saveProgress } from '../../lib/progressRepository'
+import { getBookPageUrl } from '../../lib/bookPages'
 import { getSubjectForStudent, getTeachers } from '../../lib/referenceDataRepository'
 import { getLessonForSession } from '../../lib/sessionContent'
 import { getStudentById } from '../../lib/studentsRepository'
@@ -38,6 +39,8 @@ export function TeacherSessionScreen() {
   const [student, setStudent] = useState<Student | null>(null)
   const [teacher, setTeacher] = useState<Teacher | null>(null)
   const [lesson, setLesson] = useState<Lesson | null | undefined>(undefined)
+  const [bookId, setBookId] = useState<Id | null>(null)
+  const [pageUrl, setPageUrl] = useState<string | undefined>()
   const [sessionId, setSessionId] = useState<Id | null>(null)
   const [plans, setPlans] = useState<PlannedActivity[]>([])
   const [overview, setOverview] = useState<{ label: string; count: number }[]>([])
@@ -74,6 +77,7 @@ export function TeacherSessionScreen() {
         : await getLessonForSession(s.id, subject.id)
       setLesson(currentLesson || null)
       if (!currentLesson) return
+      setBookId((await getUnitById(currentLesson.unitId))?.bookId ?? null)
 
       const finished = repeat ? new Set<Id>() : await getFinishedActivityIds(s.id)
       const activities = await getLessonActivities(currentLesson.id)
@@ -112,6 +116,13 @@ export function TeacherSessionScreen() {
 
   const current = plans[activityIndex]
   const currentItem = current?.items[itemIndex]
+  const currentPage = current?.activity.page
+
+  // صورة صفحة الكتاب للنشاط الحالي (إن رُفعت)؛ تُجلب برابط موقّع.
+  useEffect(() => {
+    setPageUrl(undefined)
+    if (bookId && currentPage) getBookPageUrl(bookId, currentPage).then(setPageUrl)
+  }, [bookId, currentPage])
 
   // الصوت الوحيد: صوت أحمد المحفوظ (يُولَّد ويُحفظ أول مرة فقط). لا صوت بديل؛ عند الفشل يظهر زر إعادة المحاولة.
   async function speakBest(text: string) {
@@ -271,6 +282,15 @@ export function TeacherSessionScreen() {
             {current.activity.title}
             {current.items.length > 1 && step !== 'recite' && ` · ${itemIndex + 1} من ${current.items.length}`}
           </p>
+
+          {pageUrl && (
+            <img
+              src={pageUrl}
+              alt={`صفحة ${currentPage} من الكتاب`}
+              onError={() => setPageUrl(undefined)}
+              className="max-h-80 w-full rounded-lg border border-gray-200 object-contain"
+            />
+          )}
 
           {step !== 'recite' && currentItem && !(current.mode === 'write' && step === 'item' && isDictation) && (
             <p className="text-center text-3xl font-bold leading-relaxed text-gray-900">{currentItem}</p>

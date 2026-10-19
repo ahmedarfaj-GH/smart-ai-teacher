@@ -1,5 +1,6 @@
 // مسارات المحتوى وتدرّج التفعيل. كل نشاط (kind) يتبع مسارًا واحدًا، والمسارات المفعَّلة فقط تظهر في جلسة الطالب.
-// التدرّج (راجع الخارطة في plan.md): الآن القراءة والحفظ بلا أي تحقق آلي، وبقية المسارات تُفعَّل لاحقًا بإضافتها هنا.
+// التدرّج: القراءة والحفظ والكتابة مفعَّلة بلا أي تحقق آلي. الكتابة بأسلوب الدفتر: الطالب يكتب على ورقه ويقارن بنفسه
+// (التحقق الآلي من الخط مؤجَّل). المسار الورقي (تلوين/توصيل) يبقى خارج الجلسة.
 
 import type { LessonActivityKind } from '../types/entities'
 
@@ -24,7 +25,7 @@ export const TRACK_LABEL: Record<Track, string> = {
   enrichment: 'إثرائي',
 }
 
-export const ACTIVE_TRACKS: Track[] = ['reading', 'memorization']
+export const ACTIVE_TRACKS: Track[] = ['reading', 'memorization', 'writing']
 
 export function isTrackActive(kind: LessonActivityKind): boolean {
   return ACTIVE_TRACKS.includes(TRACK_OF_KIND[kind])

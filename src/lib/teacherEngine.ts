@@ -19,7 +19,9 @@ function getDiagnosticIntro(studentName: string): string {
 const ENCOURAGEMENTS = ['قريب! جرب مرة ثانية.', 'كفو، حاول مرة ثانية.', 'قربت تضبطها، جرب مرة ثانية.']
 const PRAISES = ['ممتاز! 🌟', 'أحسنت!', 'كفو عليك!', 'شغل رائع!']
 const NEXT_ACTIVITY_INTROS = ['خلنا نجرب هذي.', 'جاهز؟ هذا السؤال الجاي.', 'يلا نكمل.']
-const NOT_HEARD = 'ما سمعتك، جرب مرة ثانية.'
+const WRITE_PROMPT = 'اكتبها في دفترك، ولما تخلص اضغط كتبتها.'
+const CHECK_PROMPT = 'قارن كتابتك بالجملة. إذا كتبتها صح اضغط كتبتها صح.'
+const RECITE_PROMPT = 'الحين سمّع المحفوظ من حفظك لبابا أو ماما.'
 
 function getEncouragement(): string {
   return pickRandom(ENCOURAGEMENTS)
@@ -29,12 +31,20 @@ function getPraise(): string {
   return pickRandom(PRAISES)
 }
 
-function getNotHeard(): string {
-  return NOT_HEARD
+function getWritePrompt(): string {
+  return WRITE_PROMPT
+}
+
+function getCheckPrompt(): string {
+  return CHECK_PROMPT
+}
+
+function getRecitePrompt(): string {
+  return RECITE_PROMPT
 }
 
 function getFixedPhrases(): string[] {
-  return [...ENCOURAGEMENTS, ...PRAISES, ...NEXT_ACTIVITY_INTROS, NOT_HEARD]
+  return [...ENCOURAGEMENTS, ...PRAISES, ...NEXT_ACTIVITY_INTROS, WRITE_PROMPT, CHECK_PROMPT, RECITE_PROMPT]
 }
 
 function getHint(level: 1 | 2, hintText: string): string {
@@ -86,7 +96,9 @@ export const TeacherEngine = {
   getDiagnosticIntro,
   getEncouragement,
   getPraise,
-  getNotHeard,
+  getWritePrompt,
+  getCheckPrompt,
+  getRecitePrompt,
   getFixedPhrases,
   getHint,
   getGentleExplanationAndMoveOn,

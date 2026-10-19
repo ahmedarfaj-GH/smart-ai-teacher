@@ -19,3 +19,16 @@ export async function saveProgress(studentId: Id, activityId: Id, status: Activi
     )
   if (error) throw error
 }
+
+// آخر درس أنجز فيه الطالب نشاطًا (لإعادته): الأحدث تقدّمًا هو الأول.
+export async function getLastFinishedLessonId(studentId: Id): Promise<Id | undefined> {
+  const { data, error } = await supabase
+    .from('activity_progress')
+    .select('updated_at, lesson_activities!inner(lesson_id)')
+    .eq('student_id', studentId)
+    .order('updated_at', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+  if (error) throw error
+  return (data?.lesson_activities as unknown as { lesson_id: Id } | undefined)?.lesson_id
+}

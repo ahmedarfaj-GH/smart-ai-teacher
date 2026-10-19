@@ -118,8 +118,6 @@ export function TeacherSessionScreen() {
   const currentItem = current?.items[itemIndex]
   const currentPage = current?.activity.page
   const currentAnswer = currentItem ? current?.activity.answers[currentItem] : undefined
-  // العنصر الذي له صورة خاصة يعرضها وحدها، وغيره يعرض صور صفحته.
-  const shownImages = currentAnswer?.image ? pageImages.filter((i) => i.name === currentAnswer.image) : pageImages
 
   // صور صفحة النشاط الحالي (إن رُفعت)؛ تُجلب بروابط موقّعة.
   useEffect(() => {
@@ -290,10 +288,10 @@ export function TeacherSessionScreen() {
             {current.items.length > 1 && step !== 'recite' && ` · ${itemIndex + 1} من ${current.items.length}`}
           </p>
 
-          {shownImages.length > 0 && (
+          {pageImages.length > 0 && (
             <div className="flex flex-wrap justify-center gap-2">
-              {shownImages.map(({ name, url }) => (
-                <img key={name} src={url} alt="" className="max-h-28 rounded-lg border border-gray-200 object-contain" />
+              {pageImages.map(({ name, url }) => (
+                <img key={name} src={url} alt={`صفحة ${currentPage} من الكتاب`} className="max-h-[28rem] w-full max-w-md rounded-lg border border-gray-200 object-contain" />
               ))}
             </div>
           )}

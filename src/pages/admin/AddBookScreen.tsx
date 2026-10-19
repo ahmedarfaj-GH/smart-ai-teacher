@@ -138,7 +138,7 @@ export function AddBookScreen() {
             onChange={(e) => setImageFiles(Array.from(e.target.files ?? []))}
             className="block w-full text-sm text-gray-600 file:mr-3 file:rounded-md file:border-0 file:bg-purple-50 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-purple-700"
           />
-          <p className="mt-1 text-xs text-gray-500">اختر عدة صور معًا. رقم الصفحة أول رقم في اسم الملف (p27-1.jpg ← صفحة 27)، فتظهر مع أنشطة تلك الصفحة.</p>
+          <p className="mt-1 text-xs text-gray-500">اختر عدة صور معًا. اسم الملف page-27.jpg ← صفحة 27، فتظهر الصفحة مع أنشطتها.</p>
         </div>
 
         <button

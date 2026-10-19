@@ -1,4 +1,4 @@
-// رفع صور الكتاب (ملفات صور) لتظهر للطالب مع أنشطة صفحاتها. اسم الملف يحمل رقم الصفحة: p27-1.jpg ← صفحة 27.
+// رفع صور الكتاب (ملفات صور) لتظهر للطالب مع أنشطة صفحاتها. اسم الملف يحمل رقم الصفحة: page-27.jpg ← صفحة 27.
 import { useState } from 'react'
 import { uploadBookImages } from '../lib/bookPagesUpload'
 import type { Id } from '../types/entities'
@@ -24,7 +24,7 @@ export function BookPagesUploader({ bookId }: { bookId: Id }) {
   return (
     <div className="mt-4 rounded-xl border border-gray-200 bg-white p-4">
       <div className="text-sm font-semibold text-gray-700">صور الكتاب</div>
-      <p className="mt-1 text-xs text-gray-500">اختر ملفات الصور معًا. رقم الصفحة أول رقم في اسم الملف (p27-1.jpg ← صفحة 27).</p>
+      <p className="mt-1 text-xs text-gray-500">اختر ملفات الصور معًا. اسم الملف page-27.jpg ← صفحة 27، فتظهر الصفحة مع أنشطتها.</p>
       <input
         type="file"
         accept="image/*"

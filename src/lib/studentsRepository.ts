@@ -10,6 +10,7 @@ function mapStudent(row: Record<string, unknown>): Student {
     name: row.name as string,
     age: row.age as number,
     gradeId: row.grade_id as string,
+    semesterId: (row.semester_id as string | null) ?? undefined,
   }
 }
 
@@ -25,10 +26,22 @@ export async function getStudentById(studentId: Id): Promise<Student | undefined
   return data ? mapStudent(data) : undefined
 }
 
-export async function addChild(input: { parentId: Id; name: string; age: number; gradeId: Id }): Promise<Student> {
+export async function addChild(input: {
+  parentId: Id
+  name: string
+  age: number
+  gradeId: Id
+  semesterId: Id
+}): Promise<Student> {
   const { data, error } = await supabase
     .from('students')
-    .insert({ parent_id: input.parentId, name: input.name, age: input.age, grade_id: input.gradeId })
+    .insert({
+      parent_id: input.parentId,
+      name: input.name,
+      age: input.age,
+      grade_id: input.gradeId,
+      semester_id: input.semesterId,
+    })
     .select()
     .single()
   if (error) throw error

@@ -2,7 +2,7 @@
 // تحل محل الاستيراد الثابت من seed.ts بعد الانتقال لـ Supabase (المرحلة 8).
 
 import { supabase } from './supabaseClient'
-import type { AcademicYear, Grade, Id, Semester, Skill, Stage, Subject, Teacher } from '../types/entities'
+import type { AcademicYear, Grade, Id, Semester, Skill, Stage, Student, Subject, Teacher } from '../types/entities'
 
 function mapTeacher(row: Record<string, unknown>): Teacher {
   return {
@@ -66,4 +66,11 @@ export async function getTeachers(): Promise<Teacher[]> {
   const { data, error } = await supabase.from('teachers').select('*')
   if (error) throw error
   return (data ?? []).map(mapTeacher)
+}
+
+// مادة الطالب الحالية: مادة الفصل الذي اختاره ولي الأمر ضمن صفه (وإن لم يُحدَّد فصل فأول مادة في صفه).
+export async function getSubjectForStudent(student: Student): Promise<Subject | undefined> {
+  const [subjects, semesters] = await Promise.all([getSubjects(), getSemesters()])
+  const inGrade = subjects.filter((s) => semesters.find((sem) => sem.id === s.semesterId)?.gradeId === student.gradeId)
+  return inGrade.find((s) => s.semesterId === student.semesterId) ?? inGrade[0]
 }

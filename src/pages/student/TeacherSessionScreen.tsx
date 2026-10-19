@@ -6,7 +6,7 @@ import { loadAudioCache, playSpeechAudio, prefetchAudio, stopAudio } from '../..
 import { getLessonActivities, getLessonById } from '../../lib/curriculumRepository'
 import { endSession, startSession } from '../../lib/learningEngine'
 import { getFinishedActivityIds, getLastFinishedLessonId, saveProgress } from '../../lib/progressRepository'
-import { getSubjects, getTeachers } from '../../lib/referenceDataRepository'
+import { getSubjectForStudent, getTeachers } from '../../lib/referenceDataRepository'
 import { getLessonForSession } from '../../lib/sessionContent'
 import { getStudentById } from '../../lib/studentsRepository'
 import { TeacherEngine } from '../../lib/teacherEngine'
@@ -61,8 +61,8 @@ export function TeacherSessionScreen() {
     startedRef.current = true
 
     async function setup() {
-      const [s, subjects, teachers] = await Promise.all([getStudentById(studentId!), getSubjects(), getTeachers()])
-      const subject = subjects[0]
+      const [s, teachers] = await Promise.all([getStudentById(studentId!), getTeachers()])
+      const subject = s ? await getSubjectForStudent(s) : undefined
       const currentTeacher = teachers[0]
       if (!s || !subject || !currentTeacher) return
       setStudent(s)

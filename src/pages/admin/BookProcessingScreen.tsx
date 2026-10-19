@@ -3,13 +3,13 @@ import { Link, useLocation } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import { createBook, importParsedBook } from '../../lib/curriculumRepository'
 import { parseBookMarkdown } from '../../lib/bookMarkdownParser'
-import { uploadBookPages } from '../../lib/bookPagesUpload'
+import { uploadBookImages } from '../../lib/bookPagesUpload'
 import { extractPdfText, type ExtractionProgress } from '../../lib/pdfExtractor'
 import type { Book, Id } from '../../types/entities'
 
 interface LocationState {
   file: File
-  imagesFile: File | null
+  imageFiles: File[]
   title: string
   bookType: string
   part: string
@@ -59,9 +59,9 @@ export function BookProcessingScreen() {
           const counts = await importParsedBook(created.id, parseBookMarkdown(text))
           setImported(counts)
         }
-        // صور الصفحات: تُرفع بعد إنشاء الكتاب، وكل نشاط يعرض صورة صفحته (برقم الصفحة).
-        if (state!.imagesFile) {
-          await uploadBookPages(created.id, state!.imagesFile, (done, total) => setPagesProgress({ done, total }))
+        // الصور: تُرفع بعد إنشاء الكتاب، وكل نشاط يعرض صور صفحته (برقم الصفحة في اسم الملف).
+        if (state!.imageFiles.length > 0) {
+          await uploadBookImages(created.id, state!.imageFiles, (done, total) => setPagesProgress({ done, total }))
         }
         setBook(created)
       } catch (err) {
@@ -121,7 +121,7 @@ export function BookProcessingScreen() {
 
       {pagesProgress && (
         <p className="mt-4 text-sm text-gray-600">
-          {done ? `✓ تم رفع ${pagesProgress.total} صورة صفحة` : `جارِ رفع صور الصفحات: ${pagesProgress.done} من ${pagesProgress.total || '…'}`}
+          {done ? `✓ تم رفع ${pagesProgress.total} صورة` : `جارِ رفع الصور: ${pagesProgress.done} من ${pagesProgress.total || '…'}`}
         </p>
       )}
 

@@ -4,7 +4,7 @@
 // صلاحيات الإضافة في القاعدة مقيّدة بالإضافة فقط (راجع migrations/004_audio_on_demand.sql).
 
 import { supabase } from './supabaseClient'
-import { synthesizeWavBlob, TTS_MODEL, TTS_VOICE } from './mlSpeech'
+import { synthesizeWavBlob, TTS_MODEL, TTS_VOICE } from './tts'
 
 const BUCKET = 'lesson-audio'
 
@@ -34,7 +34,11 @@ export async function loadAudioCache(texts: string[]): Promise<number> {
   return (data ?? []).length
 }
 
-export function stopCachedAudio(): void {
+// رقم آخر طلب نطق: أي طلب أقدم ينتهي توليده/تحميله بعد طلب أحدث يُلغى ولا يُشغَّل، فلا يتداخل صوتان أبدًا.
+let playToken = 0
+
+export function stopAudio(): void {
+  playToken++
   currentAudio?.pause()
   currentAudio = null
 }
@@ -93,19 +97,21 @@ async function ensureAudio(text: string): Promise<{ url: string; generated: bool
   }
 }
 
-// ينطق النص بالصوت المحفوظ، ويولّده ويحفظه أولًا إن لم يكن موجودًا. ترجع false عند أي فشل
-// (مفتاح غائب، حد استخدام، شبكة) ليستخدم المستدعي صوت المتصفح كبديل.
+// ينطق النص بالصوت المحفوظ، ويولّده ويحفظه أولًا إن لم يكن موجودًا (أول طلب فقط من أي مستخدم).
+// لا يوجد صوت بديل: عند الفشل ترجع false ويُظهر المستدعي زر "إعادة المحاولة".
 export async function playSpeechAudio(text: string): Promise<boolean> {
+  stopAudio()
+  const token = playToken
   try {
     const { url } = await ensureAudio(text)
-    stopCachedAudio()
+    if (token !== playToken) return true // طلب أحدث حلّ محله — لا نشغّل شيئًا
     const audio = new Audio(url)
     currentAudio = audio
     await audio.play()
     return true
   } catch (err) {
     console.error('تعذّر تشغيل الصوت:', err)
-    return false
+    return token !== playToken
   }
 }
 

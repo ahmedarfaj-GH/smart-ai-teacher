@@ -2,14 +2,12 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { TeacherAvatar } from '../../components/TeacherAvatar'
 import { getActivityItems, isSessionActivity } from '../../lib/activityItems'
-import { loadAudioCache, playSpeechAudio, stopCachedAudio } from '../../lib/audioCache'
+import { loadAudioCache, playSpeechAudio, stopAudio } from '../../lib/audioCache'
 import { getLessonActivities } from '../../lib/curriculumRepository'
 import { endSession, startSession } from '../../lib/learningEngine'
-import { isModelReady } from '../../lib/mlSpeech'
 import { getFinishedActivityIds, saveProgress } from '../../lib/progressRepository'
 import { getSubjects, getTeachers } from '../../lib/referenceDataRepository'
 import { getLessonForSession } from '../../lib/sessionContent'
-import { hasArabicVoice, speak, stopSpeaking } from '../../lib/speech'
 import { getStudentById } from '../../lib/studentsRepository'
 import { TeacherEngine } from '../../lib/teacherEngine'
 import { TRACK_OF_KIND } from '../../lib/tracks'
@@ -41,11 +39,7 @@ export function TeacherSessionScreen() {
   const [reciting, setReciting] = useState(false) // آخر خطوة في الحفظ: تسميع المحفوظ لولي الأمر
   const [complete, setComplete] = useState(false)
   const [say, setSay] = useState('')
-  const [arabicVoiceAvailable, setArabicVoiceAvailable] = useState<boolean | null>(null)
-
-  useEffect(() => {
-    hasArabicVoice().then(setArabicVoiceAvailable)
-  }, [])
+  const [audioFailed, setAudioFailed] = useState(false)
 
   // ref guard: نبدأ الجلسة مرة واحدة فقط، حتى مع الاستدعاء المزدوج لـ React StrictMode في وضع التطوير.
   useLayoutEffect(() => {
@@ -88,25 +82,18 @@ export function TeacherSessionScreen() {
   const current = plans[activityIndex]
   const currentItem = current?.items[itemIndex]
 
-  // الصوت المحفوظ (يُولَّد ويُحفظ أول مرة فقط)، وإن تعذّر يُنطق بصوت المتصفح المجاني.
+  // الصوت الوحيد: صوت أحمد المحفوظ (يُولَّد ويُحفظ أول مرة فقط). لا صوت بديل؛ عند الفشل يظهر زر إعادة المحاولة.
   async function speakBest(text: string) {
-    stopSpeaking()
-    stopCachedAudio()
-    if (await playSpeechAudio(text)) return
-    speak(text)
+    setAudioFailed(false)
+    if (!(await playSpeechAudio(text))) setAudioFailed(true)
   }
 
-  // أحمد ينطق كل رسالة فور ظهورها.
+  // أحمد ينطق كل رسالة بعد أن يضغط الطفل "يلا نبدأ" (المتصفح لا يسمح بتشغيل الصوت قبل أي لمسة).
   useEffect(() => {
-    if (say) speakBest(say)
-  }, [say])
+    if (begun && say) speakBest(say)
+  }, [say, begun])
 
-  useEffect(() => {
-    return () => {
-      stopSpeaking()
-      stopCachedAudio()
-    }
-  }, [])
+  useEffect(() => stopAudio, [])
 
   function startActivity(index: number) {
     setActivityIndex(index)
@@ -187,10 +174,13 @@ export function TeacherSessionScreen() {
         <span className="flex-1">{say}</span>
       </div>
 
-      {arabicVoiceAvailable === false && !isModelReady() && (
-        <p className="w-full rounded-lg bg-amber-50 p-3 text-center text-xs text-amber-700">
-          صوت أحمد غير متاح: لا يوجد صوت عربي مثبّت على هذا الجهاز. اطلب من بابا أو ماما تثبيت صوت عربي من إعدادات الجهاز.
-        </p>
+      {audioFailed && (
+        <button
+          onClick={() => speakBest(say)}
+          className="w-full rounded-lg bg-amber-50 p-3 text-center text-sm font-semibold text-amber-700 hover:bg-amber-100"
+        >
+          ما قدرت أسمعك صوتي. اضغط هنا وأحاول مرة ثانية
+        </button>
       )}
 
       {!begun && sessionId && (

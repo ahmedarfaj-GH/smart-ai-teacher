@@ -41,6 +41,7 @@ function mapLessonActivity(row: Record<string, unknown>): LessonActivity {
     teacherNotes: row.teacher_notes as string,
     parentNote: row.parent_note as string,
     audioPath: (row.audio_path as string | null) ?? undefined,
+    answers: (row.answers as LessonActivity['answers'] | null) ?? {},
   }
 }
 

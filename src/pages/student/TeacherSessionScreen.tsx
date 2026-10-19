@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
+import { CroppedPicture } from '../../components/CroppedPicture'
 import { TeacherAvatar } from '../../components/TeacherAvatar'
 import { getActivityItems, isSessionActivity } from '../../lib/activityItems'
 import { loadAudioCache, playSpeechAudio, prefetchAudio, stopAudio } from '../../lib/audioCache'
@@ -18,7 +19,7 @@ import type { Id, Lesson, LessonActivity, Student, Teacher } from '../../types/e
 // read = قراءة: يسمع ويقرأ — memorize = حفظ: يسمع كل سطر ويردده (ويعيد متى شاء) ثم يسمّع لولي أمره
 // write = كتابة/إملاء بالدفتر: يسمع، يكتب على ورقه، ثم "أريد التحقق" فتظهر له الجملة ليقارن بنفسه.
 type Mode = 'read' | 'memorize' | 'write'
-type Step = 'item' | 'check' | 'recite'
+type Step = 'item' | 'check' | 'answer' | 'recite'
 
 const MODE_OF_TRACK: Partial<Record<Track, Mode>> = { reading: 'read', memorization: 'memorize', writing: 'write' }
 const OVERVIEW_TRACKS: Track[] = ['reading', 'memorization', 'writing', 'paper']
@@ -117,6 +118,7 @@ export function TeacherSessionScreen() {
   const current = plans[activityIndex]
   const currentItem = current?.items[itemIndex]
   const currentPage = current?.activity.page
+  const currentAnswer = currentItem ? current?.activity.answers[currentItem] : undefined
 
   // صورة صفحة الكتاب للنشاط الحالي (إن رُفعت)؛ تُجلب برابط موقّع.
   useEffect(() => {
@@ -194,7 +196,11 @@ export function TeacherSessionScreen() {
 
   async function handleNext() {
     if (step === 'recite') await finishActivity()
-    else if (current?.mode === 'write' && step === 'item') {
+    else if (current?.mode === 'read' && step === 'item' && currentAnswer) {
+      // عنصر "أكمل": نُظهر الكلمة الصحيحة ونسأل الطفل هل كانت إجابته صحيحة.
+      setStep('answer')
+      sayText(TeacherEngine.getAnswerPrompt())
+    } else if (current?.mode === 'write' && step === 'item') {
       // كتب في دفتره وطلب التحقق: نُظهر له الجملة ليقارن بنفسه.
       setStep('check')
       sayText(TeacherEngine.getCheckPrompt())
@@ -283,7 +289,8 @@ export function TeacherSessionScreen() {
             {current.items.length > 1 && step !== 'recite' && ` · ${itemIndex + 1} من ${current.items.length}`}
           </p>
 
-          {pageUrl && (
+          {pageUrl && currentAnswer?.crop && <CroppedPicture url={pageUrl} crop={currentAnswer.crop} />}
+          {pageUrl && !currentAnswer?.crop && (
             <img
               src={pageUrl}
               alt={`صفحة ${currentPage} من الكتاب`}
@@ -299,9 +306,22 @@ export function TeacherSessionScreen() {
             <p className="text-center text-lg text-gray-500">🎧 اسمع الكلمة واكتبها في دفترك</p>
           )}
 
-          {current.mode === 'read' && (
+          {current.mode === 'read' && step === 'answer' && currentAnswer && (
+            <>
+              <p className="text-center text-3xl font-bold leading-relaxed text-purple-700">{currentAnswer.word}</p>
+              <div className="flex gap-3">
+                <button onClick={advance} className={primaryButton}>
+                  نعم
+                </button>
+                <button onClick={advance} className={secondaryButton}>
+                  لا
+                </button>
+              </div>
+            </>
+          )}
+          {current.mode === 'read' && step === 'item' && (
             <button onClick={handleNext} className={primaryButton}>
-              قرأتها ✓
+              {currentAnswer ? 'أكملتها ✓' : 'قرأتها ✓'}
             </button>
           )}
 

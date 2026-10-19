@@ -21,7 +21,7 @@ const PRAISES = ['ممتاز! 🌟', 'أحسنت!', 'كفو عليك!', 'شغل 
 const NEXT_ACTIVITY_INTROS = ['خلنا نجرب هذي.', 'جاهز؟ هذا السؤال الجاي.', 'يلا نكمل.']
 const WRITE_PROMPT = 'اكتبها في دفترك، ولما تخلص اضغط كتبتها.'
 const CHECK_PROMPT = 'قارن كتابتك بالجملة. إذا كتبتها صح اضغط كتبتها صح.'
-const ANSWER_PROMPT = 'هذي الإجابة الصحيحة. هل كانت إجابتك صحيحة؟'
+const ANSWER_PROMPT = 'هل كانت إجابتك صحيحة؟'
 const RECITE_PROMPT = 'الحين سمّع المحفوظ من حفظك لبابا أو ماما.'
 
 function getEncouragement(): string {
@@ -40,6 +40,11 @@ function getCheckPrompt(): string {
   return CHECK_PROMPT
 }
 
+// أحمد ينطق الكلمة الصحيحة ثم يسأل؛ الجملة كاملة تُنطق وتُحفظ صوتيًا مرة واحدة لكل كلمة.
+function getAnswerSpeech(word: string): string {
+  return `${word}. ${ANSWER_PROMPT}`
+}
+
 function getAnswerPrompt(): string {
   return ANSWER_PROMPT
 }
@@ -49,7 +54,7 @@ function getRecitePrompt(): string {
 }
 
 function getFixedPhrases(): string[] {
-  return [...ENCOURAGEMENTS, ...PRAISES, ...NEXT_ACTIVITY_INTROS, WRITE_PROMPT, CHECK_PROMPT, ANSWER_PROMPT, RECITE_PROMPT]
+  return [...ENCOURAGEMENTS, ...PRAISES, ...NEXT_ACTIVITY_INTROS, WRITE_PROMPT, CHECK_PROMPT, RECITE_PROMPT]
 }
 
 function getHint(level: 1 | 2, hintText: string): string {
@@ -104,6 +109,7 @@ export const TeacherEngine = {
   getWritePrompt,
   getCheckPrompt,
   getAnswerPrompt,
+  getAnswerSpeech,
   getRecitePrompt,
   getFixedPhrases,
   getHint,

@@ -100,7 +100,7 @@ export function TeacherSessionScreen() {
       )
 
       // نحمّل الصوت المحفوظ (طلب واحد)؛ وما ليس محفوظًا يُولَّد عند أول نطق ويُحفظ للجميع.
-      await loadAudioCache([...planned.flatMap((p) => p.items), ...TeacherEngine.getFixedPhrases()]).catch(() => 0)
+      await loadAudioCache([...planned.flatMap((p) => [...p.items, ...Object.values(p.activity.answers).map((a) => TeacherEngine.getAnswerSpeech(a.word))]), ...TeacherEngine.getFixedPhrases()]).catch(() => 0)
 
       const session = await startSession(s.id, subject.id)
       const welcome = TeacherEngine.getWelcomeMessage(currentTeacher.name, s.name)
@@ -108,7 +108,8 @@ export function TeacherSessionScreen() {
       setPlans(planned)
       sayText(welcome)
       // نجهّز في الخلفية صوت الترحيب وكل أسطر الجلسة وعباراتها الثابتة (بالتتابع)، حتى لا ينتظر الطفل توليدها عند الضغط.
-      prefetchAudio([welcome, ...planned.flatMap((p) => p.items), ...TeacherEngine.getFixedPhrases()])
+      const answerSpeeches = planned.flatMap((p) => Object.values(p.activity.answers).map((a) => TeacherEngine.getAnswerSpeech(a.word)))
+      prefetchAudio([welcome, ...planned.flatMap((p) => p.items), ...answerSpeeches, ...TeacherEngine.getFixedPhrases()])
     }
 
     setup()
@@ -200,7 +201,7 @@ export function TeacherSessionScreen() {
     else if (current?.mode === 'read' && step === 'item' && currentAnswer) {
       // عنصر "أكمل": نُظهر الكلمة الصحيحة ونسأل الطفل هل كانت إجابته صحيحة.
       setStep('answer')
-      sayText(TeacherEngine.getAnswerPrompt())
+      sayText(TeacherEngine.getAnswerPrompt(), TeacherEngine.getAnswerSpeech(currentAnswer.word))
     } else if (current?.mode === 'write' && step === 'item') {
       // كتب في دفتره وطلب التحقق: نُظهر له الجملة ليقارن بنفسه.
       setStep('check')

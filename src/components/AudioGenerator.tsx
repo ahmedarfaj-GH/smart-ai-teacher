@@ -23,7 +23,9 @@ export function AudioGenerator({ bookId }: { bookId: Id }) {
   useEffect(() => {
     async function load() {
       const activities = await getBookActivities(bookId)
-      const bookTexts = activities.filter(isSessionActivity).flatMap(getActivityItems)
+      const bookTexts = activities
+        .filter(isSessionActivity)
+        .flatMap((a) => [...getActivityItems(a), ...Object.values(a.answers).map((x) => TeacherEngine.getAnswerSpeech(x.word))])
       const all = [...new Set([...bookTexts, ...TeacherEngine.getFixedPhrases()])]
       setTexts(all)
       await refresh(all)

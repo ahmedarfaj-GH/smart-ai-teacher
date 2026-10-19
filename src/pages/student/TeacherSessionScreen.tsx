@@ -6,7 +6,7 @@ import { loadAudioCache, playSpeechAudio, prefetchAudio, stopAudio } from '../..
 import { getLessonActivities, getLessonById, getUnitById } from '../../lib/curriculumRepository'
 import { endSession, startSession } from '../../lib/learningEngine'
 import { getFinishedActivityIds, getLastFinishedLessonId, saveProgress } from '../../lib/progressRepository'
-import { getBookPageUrls } from '../../lib/bookPages'
+import { getBookPageImages, type PageImage } from '../../lib/bookPages'
 import { getSubjectForStudent, getTeachers } from '../../lib/referenceDataRepository'
 import { getLessonForSession } from '../../lib/sessionContent'
 import { getStudentById } from '../../lib/studentsRepository'
@@ -40,7 +40,7 @@ export function TeacherSessionScreen() {
   const [teacher, setTeacher] = useState<Teacher | null>(null)
   const [lesson, setLesson] = useState<Lesson | null | undefined>(undefined)
   const [bookId, setBookId] = useState<Id | null>(null)
-  const [pageUrls, setPageUrls] = useState<string[]>([])
+  const [pageImages, setPageImages] = useState<PageImage[]>([])
   const [sessionId, setSessionId] = useState<Id | null>(null)
   const [plans, setPlans] = useState<PlannedActivity[]>([])
   const [overview, setOverview] = useState<{ label: string; count: number }[]>([])
@@ -118,11 +118,13 @@ export function TeacherSessionScreen() {
   const currentItem = current?.items[itemIndex]
   const currentPage = current?.activity.page
   const currentAnswer = currentItem ? current?.activity.answers[currentItem] : undefined
+  // العنصر الذي له صورة خاصة يعرضها وحدها، وغيره يعرض صور صفحته.
+  const shownImages = currentAnswer?.image ? pageImages.filter((i) => i.name === currentAnswer.image) : pageImages
 
   // صور صفحة النشاط الحالي (إن رُفعت)؛ تُجلب بروابط موقّعة.
   useEffect(() => {
-    setPageUrls([])
-    if (bookId && currentPage) getBookPageUrls(bookId, currentPage).then(setPageUrls)
+    setPageImages([])
+    if (bookId && currentPage) getBookPageImages(bookId, currentPage).then(setPageImages)
   }, [bookId, currentPage])
 
   // الصوت الوحيد: صوت أحمد المحفوظ (يُولَّد ويُحفظ أول مرة فقط). لا صوت بديل؛ عند الفشل يظهر زر إعادة المحاولة.
@@ -288,10 +290,10 @@ export function TeacherSessionScreen() {
             {current.items.length > 1 && step !== 'recite' && ` · ${itemIndex + 1} من ${current.items.length}`}
           </p>
 
-          {pageUrls.length > 0 && (
+          {shownImages.length > 0 && (
             <div className="flex flex-wrap justify-center gap-2">
-              {pageUrls.map((url) => (
-                <img key={url} src={url} alt="" className="max-h-28 rounded-lg border border-gray-200 object-contain" />
+              {shownImages.map(({ name, url }) => (
+                <img key={name} src={url} alt="" className="max-h-28 rounded-lg border border-gray-200 object-contain" />
               ))}
             </div>
           )}

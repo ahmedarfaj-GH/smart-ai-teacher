@@ -18,11 +18,16 @@ function listBookImages(bookId: Id): Promise<string[]> {
   return namesByBook.get(bookId)!
 }
 
-export async function getBookPageUrls(bookId: Id, page: string): Promise<string[]> {
+export interface PageImage {
+  name: string
+  url: string
+}
+
+export async function getBookPageImages(bookId: Id, page: string): Promise<PageImage[]> {
   const names = (await listBookImages(bookId))
     .filter((n) => Number(n.match(/\d+/)?.[0]) === Number(page))
     .sort()
   if (names.length === 0) return []
   const { data } = await supabase.storage.from('book-pages').createSignedUrls(names.map((n) => `${bookId}/${n}`), 3600)
-  return (data ?? []).flatMap((d) => (d.signedUrl ? [d.signedUrl] : []))
+  return (data ?? []).flatMap((d, i) => (d.signedUrl ? [{ name: names[i], url: d.signedUrl }] : []))
 }

@@ -6,7 +6,7 @@ import { loadAudioCache, playSpeechAudio, prefetchAudio, stopAudio } from '../..
 import { getLessonActivities, getLessonById, getUnitById } from '../../lib/curriculumRepository'
 import { endSession, startSession } from '../../lib/learningEngine'
 import { getFinishedActivityIds, getLastFinishedLessonId, saveProgress } from '../../lib/progressRepository'
-import { getBookPageImages, type PageImage } from '../../lib/bookPages'
+import { getBookImageUrl, getBookPageImages, type PageImage } from '../../lib/bookPages'
 import { getSubjectForStudent, getTeachers } from '../../lib/referenceDataRepository'
 import { getLessonForSession } from '../../lib/sessionContent'
 import { getStudentById } from '../../lib/studentsRepository'
@@ -41,6 +41,7 @@ export function TeacherSessionScreen() {
   const [lesson, setLesson] = useState<Lesson | null | undefined>(undefined)
   const [bookId, setBookId] = useState<Id | null>(null)
   const [pageImages, setPageImages] = useState<PageImage[]>([])
+  const [itemImageUrl, setItemImageUrl] = useState<string | undefined>()
   const [sessionId, setSessionId] = useState<Id | null>(null)
   const [plans, setPlans] = useState<PlannedActivity[]>([])
   const [overview, setOverview] = useState<{ label: string; count: number }[]>([])
@@ -118,6 +119,13 @@ export function TeacherSessionScreen() {
   const currentItem = current?.items[itemIndex]
   const currentPage = current?.activity.page
   const currentAnswer = currentItem ? current?.activity.answers[currentItem] : undefined
+
+  // صورة السؤال الخاصة (إن وُجدت ورُفعت) تُعرض وحدها بدل صفحة النشاط.
+  const itemImageName = currentAnswer?.image
+  useEffect(() => {
+    setItemImageUrl(undefined)
+    if (bookId && itemImageName) getBookImageUrl(bookId, itemImageName).then(setItemImageUrl)
+  }, [bookId, itemImageName])
 
   // صور صفحة النشاط الحالي (إن رُفعت)؛ تُجلب بروابط موقّعة.
   useEffect(() => {
@@ -288,7 +296,8 @@ export function TeacherSessionScreen() {
             {current.items.length > 1 && step !== 'recite' && ` · ${itemIndex + 1} من ${current.items.length}`}
           </p>
 
-          {pageImages.length > 0 && (
+          {itemImageUrl && <img src={itemImageUrl} alt="" className="max-h-72 rounded-lg border border-gray-200 object-contain" />}
+          {!itemImageUrl && pageImages.length > 0 && (
             <div className="flex flex-wrap justify-center gap-2">
               {pageImages.map(({ name, url }) => (
                 <img key={name} src={url} alt={`صفحة ${currentPage} من الكتاب`} className="max-h-[28rem] w-full max-w-md rounded-lg border border-gray-200 object-contain" />

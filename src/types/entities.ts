@@ -98,6 +98,7 @@ export interface LessonActivity {
 
 export interface ItemAnswer {
   word: string
+  image?: string // اسم ملف صورة السؤال (مثل item-08-1.jpg) المرفوع مع صور الكتاب
 }
 
 // تقدّم الطالب في نشاط غير مقيَّم آليًا: done = أنجزه، learned = تعلّم المحفوظ وينتظر التسميع، recited = سمّعه (تأكيد ولي الأمر)

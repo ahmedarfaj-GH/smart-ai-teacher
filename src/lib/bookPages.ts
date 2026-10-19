@@ -18,6 +18,11 @@ function listBookImages(bookId: Id): Promise<string[]> {
   return namesByBook.get(bookId)!
 }
 
+export async function getBookImageUrl(bookId: Id, name: string): Promise<string | undefined> {
+  const { data } = await supabase.storage.from('book-pages').createSignedUrl(`${bookId}/${name}`, 3600)
+  return data?.signedUrl
+}
+
 export interface PageImage {
   name: string
   url: string

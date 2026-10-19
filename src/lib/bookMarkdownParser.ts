@@ -118,6 +118,11 @@ function cleanBody(lines: string[]): { text: string; teacherNotes: string; paren
       continue
     }
     if (/^\[(صور|جدول)/.test(line) || /^\*\(.*\)\*$/.test(line)) continue
+    // سطر مائل كامل (*يتدرب على ...*) = هدف النشاط للمعلم، وليس نصًّا يُقرأ للطالب.
+    if (/^\*[^*].*[^*]\*$/.test(line)) {
+      teacher.push(`الهدف: ${line.slice(1, -1)}`)
+      continue
+    }
     if (/^\|[\s|:-]+\|$/.test(line)) continue
     const cleaned = line
       .replace(/^>\s*/, '')

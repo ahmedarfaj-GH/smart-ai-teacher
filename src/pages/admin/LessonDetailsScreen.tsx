@@ -1,20 +1,10 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { StatusBadge } from '../../components/StatusBadge'
+import { isTrackActive, TRACK_LABEL, TRACK_OF_KIND } from '../../lib/tracks'
 import { addLessonSkill, getLessonActivities, getLessonById, getUnitById, removeLessonSkill } from '../../lib/curriculumRepository'
 import { getLessonSkillIds, getSkills } from '../../lib/referenceDataRepository'
-import type { Id, Lesson, LessonActivity, LessonActivityKind, Skill, Unit } from '../../types/entities'
-
-const KIND_LABELS: Record<LessonActivityKind, string> = {
-  reading: 'قراءة',
-  listening: 'استماع ونطق',
-  memorization: 'حفظ',
-  dictation: 'إملاء',
-  writing: 'كتابة',
-  speaking: 'تحدث',
-  paper: 'ورقي',
-  enrichment: 'إثرائي',
-}
+import type { Id, Lesson, LessonActivity, Skill, Unit } from '../../types/entities'
 
 export function LessonDetailsScreen() {
   const { lessonId } = useParams<{ lessonId: string }>()
@@ -107,14 +97,22 @@ export function LessonDetailsScreen() {
           {activities.map((activity) => (
             <li key={activity.id} className="rounded-lg border border-gray-200 bg-white p-3 text-sm">
               <div className="flex items-center gap-2">
-                <span className="rounded-full bg-purple-50 px-2 py-0.5 text-xs font-semibold text-purple-700">
-                  {KIND_LABELS[activity.kind]}
+                <span
+                  className={`rounded-full px-2 py-0.5 text-xs font-semibold ${
+                    isTrackActive(activity.kind) ? 'bg-purple-50 text-purple-700' : 'bg-gray-100 text-gray-500'
+                  }`}
+                >
+                  {TRACK_LABEL[TRACK_OF_KIND[activity.kind]]}
+                  {!isTrackActive(activity.kind) && ' · لاحقًا'}
                 </span>
                 {activity.page && <span className="text-xs text-gray-400">ص {activity.page}</span>}
                 <span className="text-gray-800">{activity.title}</span>
               </div>
               {activity.content && (
                 <p className="mt-1 line-clamp-2 whitespace-pre-line text-xs text-gray-500">{activity.content}</p>
+              )}
+              {activity.teacherNotes && (
+                <p className="mt-1 line-clamp-2 whitespace-pre-line text-xs text-amber-600">{activity.teacherNotes}</p>
               )}
             </li>
           ))}

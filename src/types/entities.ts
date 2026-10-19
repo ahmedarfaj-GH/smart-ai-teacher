@@ -95,6 +95,9 @@ export interface LessonActivity {
   audioPath?: string // مسار الصوت المولَّد مسبقًا في حاوية lesson-audio
 }
 
+// تقدّم الطالب في نشاط غير مقيَّم آليًا: done = أنجزه، learned = تعلّم المحفوظ وينتظر التسميع، recited = سمّعه (تأكيد ولي الأمر)
+export type ActivityProgressStatus = 'done' | 'learned' | 'recited'
+
 export interface Skill {
   id: Id
   name: string // مثال: "تحليل الكلمات إلى مقاطع" — قابلة لإعادة الاستخدام عبر دروس متعددة

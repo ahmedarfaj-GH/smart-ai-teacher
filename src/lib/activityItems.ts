@@ -39,6 +39,11 @@ export function getActivityItems(activity: LessonActivity): string[] {
   return items.filter((l) => l.length <= 120).slice(0, activity.kind === 'memorization' ? 30 : 12)
 }
 
+// نشاط "أقرأ الكلمات ثم أحلّلها إلى مقاطع وحروف": الطالب يحلّل في دفتره ثم يقارن بالتحليل الصحيح.
+export function isAnalysisActivity(activity: LessonActivity): boolean {
+  return plain(activity.title + activity.content).includes('احللها الى مقاطع') || plain(activity.title).startsWith('احلل')
+}
+
 // يظهر في جلسة الطالب: مساره مفعَّل (القراءة والحفظ الآن) وله نص فعلي. الأهداف والأنشطة بلا نص لا تظهر.
 export function isSessionActivity(activity: LessonActivity): boolean {
   return isTrackActive(activity.kind) && getActivityItems(activity).length > 0

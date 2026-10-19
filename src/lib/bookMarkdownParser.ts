@@ -49,7 +49,7 @@ function toLatinDigits(text: string): string {
 
 function isUnitHeading(title: string): boolean {
   const plain = stripDiacritics(title)
-  return plain.startsWith('الوحدة') || plain.startsWith('التهيئة')
+  return ['الوحدة', 'التهيئة', 'مراجعة', 'الملحق'].some((p) => plain.startsWith(p))
 }
 
 function contentTypeOf(title: string): string {
@@ -80,8 +80,10 @@ function cleanActivityTitle(heading: string): string {
 
 // التصنيف من فعل العنوان — الأكثر تحديدًا أولًا.
 function kindOf(title: string, section: ActivitySection): ActivityKind {
-  const t = stripDiacritics(title)
+  // بلا الترقيم ("١-") وكلمات الترتيب ("ثانيا") في أول العنوان، وبلا نجمة آخره.
+  const t = stripDiacritics(title).replace(/^([٠-٩]+\s*[-.]\s*|(اولا|ثانيا|ثالثا|رابعا|خامسا|سادسا)\s+|-\s*)+/, '')
   if (section === 'enrichment') return 'enrichment'
+  if (/^نص الدرس/.test(t)) return 'reading'
   if (/يملى|املاء/.test(t) || /^احلل .*ثم اكتبها/.test(t)) return 'dictation'
   if (/^انشد/.test(t)) return 'memorization'
   if (/^اكتب|^ارسم دائرة .*ثم اكتبه|^اكمل الحرف/.test(t)) return 'writing'

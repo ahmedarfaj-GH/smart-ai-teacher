@@ -1,5 +1,5 @@
 // فحص الكتابة اليدوية (الإملاء/كتابة الحرف) عبر Gemini بالرؤية: يُرسل صورة مربع الكتابة ويرجع هل الكلمة صحيحة.
-// استدعاء واحد صغير لكل إجابة. نفس مفتاح الصوت (VITE_GEMINI_API_KEY) — راجع ملاحظة الأمان في mlSpeech.ts.
+// استدعاء واحد صغير لكل إجابة. نفس مفتاح الصوت (VITE_GEMINI_API_KEY) — راجع ملاحظة الأمان في tts.ts.
 
 const API_KEY = import.meta.env.VITE_GEMINI_API_KEY as string | undefined
 const MODEL_ID = (import.meta.env.VITE_GEMINI_VISION_MODEL as string | undefined) || 'gemini-3.8-flash'

@@ -4,7 +4,6 @@ import { ProtectedRoute } from './components/ProtectedRoute'
 import { useAuth } from './context/AuthContext'
 import { SignInScreen } from './pages/auth/SignInScreen'
 import { SignUpScreen } from './pages/auth/SignUpScreen'
-import { VoiceTestScreen } from './pages/dev/VoiceTestScreen'
 import { AdminDashboard } from './pages/admin/AdminDashboard'
 import { AddBookScreen } from './pages/admin/AddBookScreen'
 import { BookProcessingScreen } from './pages/admin/BookProcessingScreen'
@@ -32,7 +31,6 @@ function App() {
       <Routes>
         <Route path="/sign-in" element={<SignInScreen />} />
         <Route path="/sign-up" element={<SignUpScreen />} />
-        <Route path="/voice-test" element={<VoiceTestScreen />} />
 
         <Route path="/" element={<ProtectedRoute><HomeRedirect /></ProtectedRoute>} />
 

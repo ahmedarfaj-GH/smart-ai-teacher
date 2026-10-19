@@ -1,11 +1,11 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { TeacherAvatar } from '../../components/TeacherAvatar'
 import { getActivityItems, isSessionActivity } from '../../lib/activityItems'
 import { loadAudioCache, playSpeechAudio, prefetchAudio, stopAudio } from '../../lib/audioCache'
-import { getLessonActivities } from '../../lib/curriculumRepository'
+import { getLessonActivities, getLessonById } from '../../lib/curriculumRepository'
 import { endSession, startSession } from '../../lib/learningEngine'
-import { getFinishedActivityIds, saveProgress } from '../../lib/progressRepository'
+import { getFinishedActivityIds, getLastFinishedLessonId, saveProgress } from '../../lib/progressRepository'
 import { getSubjects, getTeachers } from '../../lib/referenceDataRepository'
 import { getLessonForSession } from '../../lib/sessionContent'
 import { getStudentById } from '../../lib/studentsRepository'
@@ -26,6 +26,8 @@ interface PlannedActivity {
 export function TeacherSessionScreen() {
   const { studentId } = useParams<{ studentId: string }>()
   const navigate = useNavigate()
+  // ?repeat=1 → إعادة آخر درس أنجزه الطالب (كل أنشطته من جديد)، بدل التقدّم إلى درس جديد.
+  const repeat = useSearchParams()[0].get('repeat') === '1'
   const startedRef = useRef(false)
 
   const [student, setStudent] = useState<Student | null>(null)
@@ -55,11 +57,14 @@ export function TeacherSessionScreen() {
       setStudent(s)
       setTeacher(currentTeacher)
 
-      const currentLesson = await getLessonForSession(s.id, subject.id)
-      setLesson(currentLesson ?? null)
+      const lastLessonId = repeat ? await getLastFinishedLessonId(s.id) : undefined
+      const currentLesson = repeat
+        ? lastLessonId && (await getLessonById(lastLessonId))
+        : await getLessonForSession(s.id, subject.id)
+      setLesson(currentLesson || null)
       if (!currentLesson) return
 
-      const finished = await getFinishedActivityIds(s.id)
+      const finished = repeat ? new Set<Id>() : await getFinishedActivityIds(s.id)
       const planned: PlannedActivity[] = (await getLessonActivities(currentLesson.id))
         .filter((a) => isSessionActivity(a) && !finished.has(a.id))
         .map((activity) => ({
@@ -163,11 +168,18 @@ export function TeacherSessionScreen() {
     return <p className="p-6 text-center text-gray-400">جارِ التحميل...</p>
   }
 
+  const repeatLesson = () => window.location.assign(`/student/${student.id}/session?repeat=1`)
+
   if (lesson === null || (lesson && sessionId && plans.length === 0)) {
     return (
-      <p className="p-6 text-center text-gray-500">
-        أنجزتَ كل ما هو متاح الحين، أحسنت! بنضيف دروس جديدة قريبًا.
-      </p>
+      <div className="flex flex-col items-center gap-4 p-6 text-center">
+        <p className="text-gray-500">أنجزتَ كل ما هو متاح الحين، أحسنت! بنضيف دروس جديدة قريبًا.</p>
+        {!repeat && (
+          <button onClick={repeatLesson} className="rounded-xl bg-purple-600 px-8 py-4 text-lg font-bold text-white hover:bg-purple-700">
+            نعيد آخر درس
+          </button>
+        )}
+      </div>
     )
   }
 
@@ -230,12 +242,17 @@ export function TeacherSessionScreen() {
       )}
 
       {complete && (
-        <button
-          onClick={() => navigate(`/student/${student.id}/session-summary`)}
-          className="rounded-xl bg-purple-600 px-8 py-4 text-lg font-bold text-white hover:bg-purple-700"
-        >
-          شوف ملخص الجلسة
-        </button>
+        <div className="flex flex-col items-center gap-3">
+          <button
+            onClick={() => navigate(`/student/${student.id}/session-summary`)}
+            className="rounded-xl bg-purple-600 px-8 py-4 text-lg font-bold text-white hover:bg-purple-700"
+          >
+            شوف ملخص الجلسة
+          </button>
+          <button onClick={repeatLesson} className="rounded-xl bg-purple-50 px-8 py-3 font-bold text-purple-700 hover:bg-purple-100">
+            نعيد الدرس
+          </button>
+        </div>
       )}
     </div>
   )

@@ -3,11 +3,13 @@ import { Link, useLocation } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import { createBook, importParsedBook } from '../../lib/curriculumRepository'
 import { parseBookMarkdown } from '../../lib/bookMarkdownParser'
+import { uploadBookPages } from '../../lib/bookPagesUpload'
 import { extractPdfText, type ExtractionProgress } from '../../lib/pdfExtractor'
 import type { Book, Id } from '../../types/entities'
 
 interface LocationState {
   file: File
+  imagesFile: File | null
   title: string
   bookType: string
   part: string
@@ -23,6 +25,7 @@ export function BookProcessingScreen() {
   const [progress, setProgress] = useState<ExtractionProgress | null>(null)
   const [extractedText, setExtractedText] = useState<string | null>(null)
   const [book, setBook] = useState<Book | null>(null)
+  const [pagesProgress, setPagesProgress] = useState<{ done: number; total: number } | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [imported, setImported] = useState<{ units: number; lessons: number; activities: number } | null>(null)
   const startedRef = useRef(false)
@@ -55,6 +58,10 @@ export function BookProcessingScreen() {
         if (isMarkdown) {
           const counts = await importParsedBook(created.id, parseBookMarkdown(text))
           setImported(counts)
+        }
+        // صور الصفحات: تُرفع بعد إنشاء الكتاب، وكل نشاط يعرض صورة صفحته (برقم الصفحة).
+        if (state!.imagesFile) {
+          await uploadBookPages(created.id, state!.imagesFile, (done, total) => setPagesProgress({ done, total }))
         }
         setBook(created)
       } catch (err) {
@@ -111,6 +118,12 @@ export function BookProcessingScreen() {
           <p className="text-gray-400">جارِ فتح الملف...</p>
         )}
       </div>
+
+      {pagesProgress && (
+        <p className="mt-4 text-sm text-gray-600">
+          {done ? `✓ تم رفع ${pagesProgress.total} صورة صفحة` : `جارِ رفع صور الصفحات: ${pagesProgress.done} من ${pagesProgress.total || '…'}`}
+        </p>
+      )}
 
       {extracted && (
         <div className="mt-4 max-h-64 overflow-y-auto rounded-xl border border-gray-200 bg-gray-50 p-4 text-sm text-gray-600">

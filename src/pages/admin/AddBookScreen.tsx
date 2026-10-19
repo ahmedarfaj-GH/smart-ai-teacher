@@ -25,6 +25,7 @@ export function AddBookScreen() {
   const [part, setPart] = useState('')
   const [source, setSource] = useState('')
   const [file, setFile] = useState<File | null>(null)
+  const [imagesFile, setImagesFile] = useState<File | null>(null)
   const [gradeId, setGradeId] = useState('')
   const [semesterId, setSemesterId] = useState('')
   const [subjectId, setSubjectId] = useState('')
@@ -70,7 +71,7 @@ export function AddBookScreen() {
     e.preventDefault()
     if (!file || !ref || !chosenSubject) return
     navigate('/admin/books/new/processing', {
-      state: { file, title, bookType, part, source, subjectId: chosenSubject.id },
+      state: { file, imagesFile, title, bookType, part, source, subjectId: chosenSubject.id },
     })
   }
 
@@ -126,6 +127,17 @@ export function AddBookScreen() {
             className="block w-full text-sm text-gray-600 file:mr-3 file:rounded-md file:border-0 file:bg-purple-50 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-purple-700"
           />
           {file && <p className="mt-1 text-xs text-gray-500">تم اختيار: {file.name}</p>}
+        </div>
+
+        <div>
+          <label className="mb-1 block text-sm font-semibold text-gray-700">الصور (ملف PDF الأصلي للكتاب — اختياري)</label>
+          <input
+            type="file"
+            accept="application/pdf"
+            onChange={(e) => setImagesFile(e.target.files?.[0] ?? null)}
+            className="block w-full text-sm text-gray-600 file:mr-3 file:rounded-md file:border-0 file:bg-purple-50 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-purple-700"
+          />
+          <p className="mt-1 text-xs text-gray-500">تُقسَّم صفحاته تلقائيًا على الأقسام، فيرى الطالب صفحة كل نشاط معه.</p>
         </div>
 
         <button

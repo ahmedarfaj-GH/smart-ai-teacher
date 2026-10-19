@@ -128,6 +128,7 @@ export interface Student {
   name: string
   age: number
   gradeId: Id
+  semesterId?: Id // الفصل الذي اختاره ولي الأمر عند التسجيل؛ منه تُحدَّد المادة
   parentId: Id
 }
 

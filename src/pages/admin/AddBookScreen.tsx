@@ -12,9 +12,9 @@ import type { AcademicYear, Grade, Semester, Stage, Subject } from '../../types/
 interface ReferenceData {
   academicYear: AcademicYear
   stage: Stage
-  grade: Grade
-  semester: Semester
-  subject: Subject
+  grades: Grade[]
+  semesters: Semester[]
+  subjects: Subject[]
 }
 
 export function AddBookScreen() {
@@ -25,6 +25,9 @@ export function AddBookScreen() {
   const [part, setPart] = useState('')
   const [source, setSource] = useState('')
   const [file, setFile] = useState<File | null>(null)
+  const [gradeId, setGradeId] = useState('')
+  const [semesterId, setSemesterId] = useState('')
+  const [subjectId, setSubjectId] = useState('')
 
   useEffect(() => {
     async function load() {
@@ -35,14 +38,11 @@ export function AddBookScreen() {
         getSemesters(),
         getSubjects(),
       ])
-      const subject = subjects[0]
-      const semester = semesters.find((s) => s.id === subject?.semesterId)
-      const grade = grades.find((g) => g.id === semester?.gradeId)
-      const stage = stages.find((s) => s.id === grade?.stageId)
+      const stage = stages.find((s) => s.id === grades[0]?.stageId)
       const academicYear = academicYears.find((y) => y.id === stage?.academicYearId)
-      if (subject && semester && grade && stage && academicYear) {
-        setRef({ academicYear, stage, grade, semester, subject })
-        setTitle(`${subject.name} — كتاب الطالب`)
+      if (stage && academicYear) {
+        setRef({ academicYear, stage, grades, semesters, subjects })
+        setGradeId(grades[0].id)
         setBookType('كتاب الطالب')
         setPart('الجزء الأول')
         setSource('وزارة التعليم')
@@ -51,11 +51,26 @@ export function AddBookScreen() {
     load()
   }, [])
 
+  // الفصول للصف المختار، والمواد للفصل المختار؛ وعند تغيير الأعلى نختار أول خيار في الأدنى.
+  const gradeSemesters = ref?.semesters.filter((s) => s.gradeId === gradeId) ?? []
+  const chosenSemesterId = gradeSemesters.some((s) => s.id === semesterId) ? semesterId : (gradeSemesters[0]?.id ?? '')
+  const semesterSubjects = ref?.subjects.filter((s) => s.semesterId === chosenSemesterId) ?? []
+  const chosenSubject = semesterSubjects.find((s) => s.id === subjectId) ?? semesterSubjects[0]
+  const chosenGrade = ref?.grades.find((g) => g.id === gradeId)
+  const chosenSemester = gradeSemesters.find((s) => s.id === chosenSemesterId)
+
+  // اسم الكتاب يتبع اختيار الصف والفصل والمادة (يمكن تعديله).
+  useEffect(() => {
+    if (chosenSubject && chosenGrade && chosenSemester) {
+      setTitle(`${chosenSubject.name} — ${chosenGrade.name} — ${chosenSemester.name}`)
+    }
+  }, [chosenSubject?.id, chosenGrade?.id, chosenSemester?.id])
+
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    if (!file || !ref) return
+    if (!file || !ref || !chosenSubject) return
     navigate('/admin/books/new/processing', {
-      state: { file, title, bookType, part, source, subjectId: ref.subject.id },
+      state: { file, title, bookType, part, source, subjectId: chosenSubject.id },
     })
   }
 
@@ -77,9 +92,24 @@ export function AddBookScreen() {
       <form onSubmit={handleSubmit} className="mt-6 flex flex-col gap-4">
         <LockedField label="السنة الدراسية" value={ref.academicYear.label} />
         <LockedField label="المرحلة" value={ref.stage.name} />
-        <LockedField label="الصف" value={ref.grade.name} />
-        <LockedField label="الفصل الدراسي" value={ref.semester.name} />
-        <LockedField label="المادة" value={ref.subject.name} />
+        <SelectField
+          label="الصف"
+          value={gradeId}
+          onChange={setGradeId}
+          options={ref.grades.map((g) => ({ value: g.id, label: g.name }))}
+        />
+        <SelectField
+          label="الفصل الدراسي"
+          value={chosenSemesterId}
+          onChange={setSemesterId}
+          options={gradeSemesters.map((s) => ({ value: s.id, label: s.name }))}
+        />
+        <SelectField
+          label="المادة"
+          value={chosenSubject?.id ?? ''}
+          onChange={setSubjectId}
+          options={semesterSubjects.map((s) => ({ value: s.id, label: s.name }))}
+        />
 
         <TextField label="اسم الكتاب" value={title} onChange={setTitle} />
         <TextField label="نوع الكتاب" value={bookType} onChange={setBookType} />
@@ -100,7 +130,7 @@ export function AddBookScreen() {
 
         <button
           type="submit"
-          disabled={!file}
+          disabled={!file || !chosenSubject}
           className="mt-2 rounded-lg bg-purple-600 px-5 py-3 text-sm font-semibold text-white hover:bg-purple-700 disabled:opacity-40"
         >
           رفع وتحليل
@@ -119,6 +149,35 @@ function LockedField({ label, value }: { label: string; value: string }) {
         disabled
         className="w-full rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-500"
       />
+    </div>
+  )
+}
+
+function SelectField({
+  label,
+  value,
+  onChange,
+  options,
+}: {
+  label: string
+  value: string
+  onChange: (v: string) => void
+  options: { value: string; label: string }[]
+}) {
+  return (
+    <div>
+      <label className="mb-1 block text-sm font-semibold text-gray-700">{label}</label>
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm"
+      >
+        {options.map((o) => (
+          <option key={o.value} value={o.value}>
+            {o.label}
+          </option>
+        ))}
+      </select>
     </div>
   )
 }

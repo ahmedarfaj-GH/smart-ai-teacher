@@ -37,6 +37,7 @@ export function StudentProfileForParent() {
     const grade = grades.find((g) => g.id === student.gradeId)
     const availableSubjects = subjects
       .filter((subj) => semesters.find((sem) => sem.id === subj.semesterId)?.gradeId === student.gradeId)
+      .filter((subj) => !student.semesterId || subj.semesterId === student.semesterId)
       .map((subject) => ({ subject, semester: semesters.find((sem) => sem.id === subject.semesterId) }))
 
     const relations = new Map<string, StudentSubject | undefined>()

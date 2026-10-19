@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { TeacherAvatar } from '../../components/TeacherAvatar'
-import { getSubjects, getTeachers } from '../../lib/referenceDataRepository'
+import { getSubjectForStudent, getTeachers } from '../../lib/referenceDataRepository'
 import { getStudentSubject } from '../../lib/studentSubjectRepository'
 import { getStudentById } from '../../lib/studentsRepository'
 import type { Student, Subject, Teacher } from '../../types/entities'
@@ -17,8 +17,8 @@ export function StudentHome() {
   useEffect(() => {
     if (!studentId) return
     async function load() {
-      const [s, subjects, teachers] = await Promise.all([getStudentById(studentId!), getSubjects(), getTeachers()])
-      const subj = subjects[0]
+      const [s, teachers] = await Promise.all([getStudentById(studentId!), getTeachers()])
+      const subj = s ? await getSubjectForStudent(s) : undefined
       setStudent(s ?? null)
       setSubject(subj ?? null)
       setTeacher(teachers[0] ?? null)

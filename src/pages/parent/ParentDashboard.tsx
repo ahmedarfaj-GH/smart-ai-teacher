@@ -2,9 +2,9 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import { getStudentSkills, getWeeklySessionStats, type WeeklySessionStats } from '../../lib/learningEngine'
-import { getGrades } from '../../lib/referenceDataRepository'
+import { getGrades, getSemesters } from '../../lib/referenceDataRepository'
 import { addChild, getMyChildren } from '../../lib/studentsRepository'
-import type { Grade, Id, Student } from '../../types/entities'
+import type { Grade, Id, Semester, Student } from '../../types/entities'
 
 interface ChildSummary {
   weekly: WeeklySessionStats
@@ -15,14 +15,20 @@ export function ParentDashboard() {
   const { profile } = useAuth()
   const [children, setChildren] = useState<Student[] | null>(null)
   const [grades, setGrades] = useState<Grade[]>([])
+  const [semesters, setSemesters] = useState<Semester[]>([])
   const [summaries, setSummaries] = useState<Map<Id, ChildSummary>>(new Map())
   const [addingChild, setAddingChild] = useState(false)
 
   async function reload() {
     if (!profile) return
-    const [childList, gradeList] = await Promise.all([getMyChildren(profile.id), getGrades()])
+    const [childList, gradeList, semesterList] = await Promise.all([
+      getMyChildren(profile.id),
+      getGrades(),
+      getSemesters(),
+    ])
     setChildren(childList)
     setGrades(gradeList)
+    setSemesters(semesterList)
 
     const summaryEntries = await Promise.all(
       childList.map(async (child) => {
@@ -48,12 +54,14 @@ export function ParentDashboard() {
         <div className="mt-6 flex flex-wrap gap-4">
           {children.map((child) => {
             const grade = grades.find((g) => g.id === child.gradeId)
+            const semester = semesters.find((s) => s.id === child.semesterId)
             const summary = summaries.get(child.id)
             return (
               <div key={child.id} className="w-64 rounded-xl border border-gray-200 bg-white p-5">
                 <div className="text-lg font-bold text-gray-900">{child.name}</div>
                 <div className="mt-2 text-sm text-gray-500">العمر: {child.age} سنوات</div>
                 <div className="text-sm text-gray-500">الصف: {grade?.name}</div>
+                {semester && <div className="text-sm text-gray-500">{semester.name}</div>}
 
                 {summary && (
                   <div className="mt-3 flex items-center justify-between rounded-lg bg-gray-50 px-3 py-2 text-xs">
@@ -80,7 +88,8 @@ export function ParentDashboard() {
             {addingChild ? (
               <AddChildForm
                 parentId={profile!.id}
-                gradeId={grades[0]?.id ?? ''}
+                grades={grades}
+                semesters={semesters}
                 onAdded={() => {
                   setAddingChild(false)
                   reload()
@@ -104,39 +113,43 @@ export function ParentDashboard() {
 
 function AddChildForm({
   parentId,
-  gradeId,
+  grades,
+  semesters,
   onAdded,
   onCancel,
 }: {
   parentId: string
-  gradeId: string
+  grades: Grade[]
+  semesters: Semester[]
   onAdded: () => void
   onCancel: () => void
 }) {
   const [name, setName] = useState('')
   const [age, setAge] = useState('')
+  const [gradeId, setGradeId] = useState(grades[0]?.id ?? '')
+  const [semesterId, setSemesterId] = useState('')
   const [saving, setSaving] = useState(false)
 
+  // الفصول المتاحة للصف المختار؛ وعند تغيير الصف نختار أول فصل فيه.
+  const gradeSemesters = semesters.filter((s) => s.gradeId === gradeId)
+  const chosenSemesterId = gradeSemesters.some((s) => s.id === semesterId) ? semesterId : (gradeSemesters[0]?.id ?? '')
+
   async function handleSave() {
-    if (!name.trim() || !age || !gradeId) return
+    if (!name.trim() || !age || !gradeId || !chosenSemesterId) return
     setSaving(true)
     try {
-      await addChild({ parentId, name: name.trim(), age: Number(age), gradeId })
+      await addChild({ parentId, name: name.trim(), age: Number(age), gradeId, semesterId: chosenSemesterId })
       onAdded()
     } finally {
       setSaving(false)
     }
   }
 
+  const field = 'rounded border border-gray-300 px-2 py-1 text-sm'
+
   return (
     <div className="flex flex-col gap-2 rounded-xl border border-dashed border-gray-300 bg-white p-5">
-      <input
-        autoFocus
-        placeholder="اسم الابن"
-        value={name}
-        onChange={(e) => setName(e.target.value)}
-        className="rounded border border-gray-300 px-2 py-1 text-sm"
-      />
+      <input autoFocus placeholder="اسم الابن" value={name} onChange={(e) => setName(e.target.value)} className={field} />
       <input
         type="number"
         min={1}
@@ -144,12 +157,28 @@ function AddChildForm({
         placeholder="العمر"
         value={age}
         onChange={(e) => setAge(e.target.value)}
-        className="rounded border border-gray-300 px-2 py-1 text-sm"
+        className={field}
       />
+      <label className="text-xs font-semibold text-gray-500">الصف</label>
+      <select value={gradeId} onChange={(e) => setGradeId(e.target.value)} className={field}>
+        {grades.map((g) => (
+          <option key={g.id} value={g.id}>
+            {g.name}
+          </option>
+        ))}
+      </select>
+      <label className="text-xs font-semibold text-gray-500">الفصل الدراسي</label>
+      <select value={chosenSemesterId} onChange={(e) => setSemesterId(e.target.value)} className={field}>
+        {gradeSemesters.map((s) => (
+          <option key={s.id} value={s.id}>
+            {s.name}
+          </option>
+        ))}
+      </select>
       <div className="flex gap-2">
         <button
           onClick={handleSave}
-          disabled={saving || !name.trim() || !age}
+          disabled={saving || !name.trim() || !age || !chosenSemesterId}
           className="rounded-md bg-purple-600 px-4 py-1.5 text-xs font-semibold text-white hover:bg-purple-700 disabled:opacity-40"
         >
           إضافة

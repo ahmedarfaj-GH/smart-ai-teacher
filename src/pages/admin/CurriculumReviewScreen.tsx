@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { AudioGenerator } from '../../components/AudioGenerator'
+import { BookPagesUploader } from '../../components/BookPagesUploader'
 import { CurriculumTree } from '../../components/CurriculumTree'
 import { StatusBadge } from '../../components/StatusBadge'
 import { getBookById } from '../../lib/curriculumRepository'
@@ -61,6 +62,7 @@ export function CurriculumReviewScreen() {
       )}
 
       <AudioGenerator bookId={book.id} />
+      <BookPagesUploader bookId={book.id} />
 
       <div className="mt-6">
         <CurriculumTree bookId={book.id} />

@@ -27,7 +27,7 @@ export function getActivityItems(activity: LessonActivity): string[] {
 
   if (activity.kind === 'dictation' || activity.kind === 'writing') {
     const words = lines.flatMap((l) => l.split(' — ')).map((w) => w.trim()).filter((w) => w && w.length <= 30)
-    return [...new Set(words)].slice(0, activity.kind === 'dictation' ? 3 : 2)
+    return [...new Set(words)].slice(0, activity.kind === 'dictation' ? 5 : 4)
   }
 
   // سطر فيه أكثر من خليتين (أبي — أمي — أخي...) قائمة كلمات: كل كلمة عنصر. سطر بخليتين (كلمة — حرف مجرّد) نأخذ كلمته فقط.

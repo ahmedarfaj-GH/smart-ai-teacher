@@ -13,7 +13,6 @@ interface Stats {
 
 export function AdminDashboard() {
   const [stats, setStats] = useState<Stats | null>(null)
-  const [firstBookId, setFirstBookId] = useState<string | null>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -26,7 +25,6 @@ export function AdminDashboard() {
         supabase.from('students').select('*', { count: 'exact', head: true }),
       ])
       if (cancelled) return
-      setFirstBookId(books[0]?.id ?? null)
       setStats({
         books: books.length,
         subjects: subjects.length,
@@ -43,7 +41,7 @@ export function AdminDashboard() {
 
   const quickActions = [
     { label: 'رفع كتاب', to: '/admin/books/new' },
-    ...(firstBookId ? [{ label: 'إدارة المحتوى', to: `/admin/books/${firstBookId}` }] : []),
+    { label: 'إدارة المحتوى', to: '/admin/content' },
     { label: 'إدارة المعلمين', to: '/admin/teachers' },
   ]
 

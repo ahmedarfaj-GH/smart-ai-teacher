@@ -7,6 +7,7 @@ import { SignUpScreen } from './pages/auth/SignUpScreen'
 import { AdminDashboard } from './pages/admin/AdminDashboard'
 import { AddBookScreen } from './pages/admin/AddBookScreen'
 import { BookProcessingScreen } from './pages/admin/BookProcessingScreen'
+import { ContentManagementScreen } from './pages/admin/ContentManagementScreen'
 import { CurriculumReviewScreen } from './pages/admin/CurriculumReviewScreen'
 import { LessonDetailsScreen } from './pages/admin/LessonDetailsScreen'
 import { TeacherManagementScreen } from './pages/admin/TeacherManagementScreen'
@@ -41,6 +42,7 @@ function App() {
               <AppTopBar />
               <Routes>
                 <Route path="/" element={<AdminDashboard />} />
+                <Route path="/content" element={<ContentManagementScreen />} />
                 <Route path="/books/new" element={<AddBookScreen />} />
                 <Route path="/books/new/processing" element={<BookProcessingScreen />} />
                 <Route path="/books/:bookId" element={<CurriculumReviewScreen />} />

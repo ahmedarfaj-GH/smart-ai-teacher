@@ -17,7 +17,7 @@ function plain(text: string): string {
   return text.replace(/[ً-ٰٟ]/g, '').replace(/[أإآ]/g, 'ا')
 }
 
-const INSTRUCTION_LINE = /المعلم|الطالب|الطلاب/
+const INSTRUCTION_LINE = /المعلم|الطالب|الطلاب|^الشاعر|رحمه الله/
 
 export function getActivityItems(activity: LessonActivity): string[] {
   const lines = activity.content
@@ -30,10 +30,13 @@ export function getActivityItems(activity: LessonActivity): string[] {
     return [...new Set(words)].slice(0, activity.kind === 'dictation' ? 3 : 2)
   }
 
-  return lines
-    .map((l) => (l.includes(' — ') ? l.split(' — ')[0].trim() : l))
-    .filter((l) => l.length <= 120)
-    .slice(0, activity.kind === 'memorization' ? 30 : 6)
+  // سطر فيه أكثر من خليتين (أبي — أمي — أخي...) قائمة كلمات: كل كلمة عنصر. سطر بخليتين (كلمة — حرف مجرّد) نأخذ كلمته فقط.
+  const items = lines.flatMap((l) => {
+    const cells = l.split(' — ').map((c) => c.trim()).filter(Boolean)
+    if (cells.length >= 3) return cells.filter((c) => !c.includes('...')) // الأجزاء الناقصة (…مَلَ) ليست نصًّا يُقرأ
+    return cells.length === 2 ? [cells[0]] : [l]
+  })
+  return items.filter((l) => l.length <= 120).slice(0, activity.kind === 'memorization' ? 30 : 12)
 }
 
 // يظهر في جلسة الطالب: مساره مفعَّل (القراءة والحفظ الآن) وله نص فعلي. الأهداف والأنشطة بلا نص لا تظهر.

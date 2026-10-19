@@ -1,22 +1,24 @@
-// اختيار درس الجلسة: الموضع الحالي للطالب إن وُجد، وإلا أول درس فعلي (contentType = "درس") في كتاب المادة.
+// اختيار درس الجلسة: أول درس (من المنشور، وإن لم يوجد منشور فكل الدروس) فيه نشاط مفعَّل لم ينجزه الطالب بعد.
+// بهذا يتقدّم الطالب تلقائيًا من درس لآخر بحسب إنجازه، دون الاعتماد على موضع يدوي.
 
-import { getBooks, getLessonById, getLessons, getUnits } from './curriculumRepository'
-import { getStudentSubject } from './studentSubjectRepository'
+import { isSessionActivity } from './activityItems'
+import { getBookActivities, getBooks, getLessons, getUnits } from './curriculumRepository'
+import { getFinishedActivityIds } from './progressRepository'
 import type { Id, Lesson } from '../types/entities'
 
 export async function getLessonForSession(studentId: Id, subjectId: Id): Promise<Lesson | undefined> {
-  const studentSubject = await getStudentSubject(studentId, subjectId)
-  if (studentSubject?.currentLessonId) {
-    const current = await getLessonById(studentSubject.currentLessonId)
-    if (current) return current
-  }
-
   const book = (await getBooks()).find((b) => b.subjectId === subjectId)
   if (!book) return undefined
 
-  for (const unit of await getUnits(book.id)) {
-    const lesson = (await getLessons(unit.id)).find((l) => l.contentType === 'درس')
-    if (lesson) return lesson
-  }
-  return undefined
+  const [units, activities, finished] = await Promise.all([
+    getUnits(book.id),
+    getBookActivities(book.id),
+    getFinishedActivityIds(studentId),
+  ])
+  const lessons = (await Promise.all(units.map((u) => getLessons(u.id)))).flat()
+  const published = lessons.filter((l) => l.status === 'published')
+  const pool = published.length > 0 ? published : lessons
+
+  return pool.find((l) => activities.some((a) => a.lessonId === l.id && isSessionActivity(a) && !finished.has(a.id)))
 }
+

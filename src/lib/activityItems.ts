@@ -1,6 +1,7 @@
 // تحويل نشاط الكتاب إلى "عناصر" يؤديها الطالب واحدًا بعد الآخر (كلمة/جملة)، وربط نوع النشاط بالمهارة.
 
 import type { LessonActivity, LessonActivityKind } from '../types/entities'
+import { isTrackActive } from './tracks'
 
 // أسماء المهارات في جدول skills (راجع supabase/migrations/002_real_book.sql).
 export const KIND_SKILL_NAME: Partial<Record<LessonActivityKind, string>> = {
@@ -32,7 +33,12 @@ export function getActivityItems(activity: LessonActivity): string[] {
   return lines
     .map((l) => (l.includes(' — ') ? l.split(' — ')[0].trim() : l))
     .filter((l) => l.length <= 120)
-    .slice(0, 6)
+    .slice(0, activity.kind === 'memorization' ? 30 : 6)
+}
+
+// يظهر في جلسة الطالب: مساره مفعَّل (القراءة والحفظ الآن) وله نص فعلي. الأهداف والأنشطة بلا نص لا تظهر.
+export function isSessionActivity(activity: LessonActivity): boolean {
+  return isTrackActive(activity.kind) && getActivityItems(activity).length > 0
 }
 
 // بلا علامات الترقيم حتى لا تؤثر على المطابقة مع ما يسمعه المتصفح.

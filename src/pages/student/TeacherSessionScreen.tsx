@@ -6,7 +6,7 @@ import { loadAudioCache, playSpeechAudio, prefetchAudio, stopAudio } from '../..
 import { getLessonActivities, getLessonById, getUnitById } from '../../lib/curriculumRepository'
 import { endSession, startSession } from '../../lib/learningEngine'
 import { getFinishedActivityIds, getLastFinishedLessonId, saveProgress } from '../../lib/progressRepository'
-import { getBookImageUrl, getBookPageImages, type PageImage } from '../../lib/bookPages'
+import { bookImageUrl, bookPageImageUrl } from '../../lib/bookPages'
 import { getSubjectForStudent, getTeachers } from '../../lib/referenceDataRepository'
 import { getLessonForSession } from '../../lib/sessionContent'
 import { getStudentById } from '../../lib/studentsRepository'
@@ -40,8 +40,7 @@ export function TeacherSessionScreen() {
   const [teacher, setTeacher] = useState<Teacher | null>(null)
   const [lesson, setLesson] = useState<Lesson | null | undefined>(undefined)
   const [bookId, setBookId] = useState<Id | null>(null)
-  const [pageImages, setPageImages] = useState<PageImage[]>([])
-  const [itemImageUrl, setItemImageUrl] = useState<string | undefined>()
+  const [failedImageUrl, setFailedImageUrl] = useState<string | undefined>()
   const [sessionId, setSessionId] = useState<Id | null>(null)
   const [plans, setPlans] = useState<PlannedActivity[]>([])
   const [overview, setOverview] = useState<{ label: string; count: number }[]>([])
@@ -120,18 +119,13 @@ export function TeacherSessionScreen() {
   const currentPage = current?.activity.page
   const currentAnswer = currentItem ? current?.activity.answers[currentItem] : undefined
 
-  // صورة السؤال الخاصة (إن وُجدت ورُفعت) تُعرض وحدها بدل صفحة النشاط.
-  const itemImageName = currentAnswer?.image
-  useEffect(() => {
-    setItemImageUrl(undefined)
-    if (bookId && itemImageName) getBookImageUrl(bookId, itemImageName).then(setItemImageUrl)
-  }, [bookId, itemImageName])
-
-  // صور صفحة النشاط الحالي (إن رُفعت)؛ تُجلب بروابط موقّعة.
-  useEffect(() => {
-    setPageImages([])
-    if (bookId && currentPage) getBookPageImages(bookId, currentPage).then(setPageImages)
-  }, [bookId, currentPage])
+  // صورة السؤال الخاصة تُعرض وحدها، وإلا صفحة النشاط كاملة؛ وإن لم يوجد الملف لا تظهر صورة.
+  const imageUrl =
+    bookId && currentPage
+      ? currentAnswer?.image
+        ? bookImageUrl(bookId, currentAnswer.image)
+        : bookPageImageUrl(bookId, currentPage)
+      : undefined
 
   // الصوت الوحيد: صوت أحمد المحفوظ (يُولَّد ويُحفظ أول مرة فقط). لا صوت بديل؛ عند الفشل يظهر زر إعادة المحاولة.
   async function speakBest(text: string) {
@@ -296,13 +290,13 @@ export function TeacherSessionScreen() {
             {current.items.length > 1 && step !== 'recite' && ` · ${itemIndex + 1} من ${current.items.length}`}
           </p>
 
-          {itemImageUrl && <img src={itemImageUrl} alt="" className="max-h-72 rounded-lg border border-gray-200 object-contain" />}
-          {!itemImageUrl && pageImages.length > 0 && (
-            <div className="flex flex-wrap justify-center gap-2">
-              {pageImages.map(({ name, url }) => (
-                <img key={name} src={url} alt={`صفحة ${currentPage} من الكتاب`} className="max-h-[28rem] w-full max-w-md rounded-lg border border-gray-200 object-contain" />
-              ))}
-            </div>
+          {imageUrl && imageUrl !== failedImageUrl && (
+            <img
+              src={imageUrl}
+              alt={`صفحة ${currentPage} من الكتاب`}
+              onError={() => setFailedImageUrl(imageUrl)}
+              className="max-h-[28rem] w-full max-w-md rounded-lg border border-gray-200 object-contain"
+            />
           )}
 
           {step !== 'recite' && currentItem && !(current.mode === 'write' && step === 'item' && isDictation) && (

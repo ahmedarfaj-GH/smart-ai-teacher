@@ -96,10 +96,8 @@ export interface LessonActivity {
   answers: Record<string, ItemAnswer> // الإجابة الصحيحة لعناصر "أكمل" (المفتاح: نص العنصر كما يظهر للطالب)
 }
 
-// crop = [x, y, عرض, ارتفاع] كنسب من صفحة الكتاب، تحدد الصورة الخاصة بالعنصر.
 export interface ItemAnswer {
   word: string
-  crop?: [number, number, number, number]
 }
 
 // تقدّم الطالب في نشاط غير مقيَّم آليًا: done = أنجزه، learned = تعلّم المحفوظ وينتظر التسميع، recited = سمّعه (تأكيد ولي الأمر)

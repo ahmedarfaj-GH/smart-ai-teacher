@@ -2,7 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { TeacherAvatar } from '../../components/TeacherAvatar'
 import { getActivityItems, isSessionActivity } from '../../lib/activityItems'
-import { loadAudioCache, playSpeechAudio, stopAudio } from '../../lib/audioCache'
+import { loadAudioCache, playSpeechAudio, prefetchAudio, stopAudio } from '../../lib/audioCache'
 import { getLessonActivities } from '../../lib/curriculumRepository'
 import { endSession, startSession } from '../../lib/learningEngine'
 import { getFinishedActivityIds, saveProgress } from '../../lib/progressRepository'
@@ -40,6 +40,7 @@ export function TeacherSessionScreen() {
   const [complete, setComplete] = useState(false)
   const [say, setSay] = useState('')
   const [audioFailed, setAudioFailed] = useState(false)
+  const [audioLoading, setAudioLoading] = useState(false)
 
   // ref guard: نبدأ الجلسة مرة واحدة فقط، حتى مع الاستدعاء المزدوج لـ React StrictMode في وضع التطوير.
   useLayoutEffect(() => {
@@ -85,12 +86,24 @@ export function TeacherSessionScreen() {
   // الصوت الوحيد: صوت أحمد المحفوظ (يُولَّد ويُحفظ أول مرة فقط). لا صوت بديل؛ عند الفشل يظهر زر إعادة المحاولة.
   async function speakBest(text: string) {
     setAudioFailed(false)
-    if (!(await playSpeechAudio(text))) setAudioFailed(true)
+    setAudioLoading(true)
+    const ok = await playSpeechAudio(text)
+    setAudioLoading(false)
+    if (!ok) setAudioFailed(true)
+  }
+
+  // السطر التالي (أو أول سطر في النشاط التالي) يُجهَّز صوته مسبقًا أثناء نطق الحالي.
+  function upcomingTexts(): string[] {
+    if (!current) return []
+    if (itemIndex + 1 < current.items.length) return current.items.slice(itemIndex + 1, itemIndex + 3)
+    return plans[activityIndex + 1]?.items.slice(0, 1) ?? []
   }
 
   // أحمد ينطق كل رسالة بعد أن يضغط الطفل "يلا نبدأ" (المتصفح لا يسمح بتشغيل الصوت قبل أي لمسة).
   useEffect(() => {
-    if (begun && say) speakBest(say)
+    if (!begun || !say) return
+    speakBest(say)
+    prefetchAudio(upcomingTexts())
   }, [say, begun])
 
   useEffect(() => stopAudio, [])
@@ -173,6 +186,8 @@ export function TeacherSessionScreen() {
         </button>
         <span className="flex-1">{say}</span>
       </div>
+
+      {audioLoading && <p className="text-xs text-gray-400">جارِ تجهيز صوت أحمد...</p>}
 
       {audioFailed && (
         <button

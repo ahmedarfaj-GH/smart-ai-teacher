@@ -10,7 +10,13 @@ const BUCKET = 'lesson-audio'
 
 // بصمة النص → رابط الصوت (ما نُسخ إلى الذاكرة في هذه الصفحة).
 const urlByHash = new Map<string, string>()
-let currentAudio: HTMLAudioElement | null = null
+
+// مشغّل واحد فقط للصفحة كلها: تغيير مصدره يقطع ما يعمل فورًا، فيستحيل أن يعمل صوتان معًا.
+let player: HTMLAudioElement | null = null
+function getPlayer(): HTMLAudioElement {
+  if (!player) player = new Audio()
+  return player
+}
 
 export async function hashText(text: string): Promise<string> {
   const bytes = new TextEncoder().encode(`${TTS_MODEL}|${TTS_VOICE}|${text.trim()}`)
@@ -39,9 +45,12 @@ let playToken = 0
 
 export function stopAudio(): void {
   playToken++
-  currentAudio?.pause()
-  currentAudio = null
+  player?.pause()
 }
+
+// تبويب آخر من الموقع بدأ نطقًا ← نوقف صوت هذا التبويب (تبويبات مفتوحة سابقًا كانت تُسمع معًا).
+const tabChannel = typeof BroadcastChannel !== 'undefined' ? new BroadcastChannel('ahmed-audio') : null
+if (tabChannel) tabChannel.onmessage = () => stopAudio()
 
 // طلبات التوليد الجارية (بصمة → وعد): يمنع توليد النص نفسه مرتين من الصفحة نفسها (تشغيل + إعادة تشغيل).
 const inflight = new Map<string, Promise<{ url: string; generated: boolean }>>()
@@ -105,13 +114,25 @@ export async function playSpeechAudio(text: string): Promise<boolean> {
   try {
     const { url } = await ensureAudio(text)
     if (token !== playToken) return true // طلب أحدث حلّ محله — لا نشغّل شيئًا
-    const audio = new Audio(url)
-    currentAudio = audio
+    const audio = getPlayer()
+    audio.src = url
+    tabChannel?.postMessage('playing')
     await audio.play()
     return true
   } catch (err) {
     console.error('تعذّر تشغيل الصوت:', err)
     return token !== playToken
+  }
+}
+
+// تجهيز أصوات السطور القادمة في الخلفية (بالتتابع، بلا تشغيل) حتى يبدأ السطر التالي فورًا عند الضغط.
+export async function prefetchAudio(texts: string[]): Promise<void> {
+  for (const text of texts) {
+    try {
+      await ensureAudio(text)
+    } catch {
+      return // الفشل هنا لا يهم: سيُعاد المحاولة عند النطق الفعلي ويظهر خطأ هناك إن استمر
+    }
   }
 }
 

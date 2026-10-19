@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import { getStudentSkills, getWeeklySessionStats, type WeeklySessionStats } from '../../lib/learningEngine'
 import { getGrades, getSemesters } from '../../lib/referenceDataRepository'
-import { addChild, getMyChildren } from '../../lib/studentsRepository'
+import { addChild, getMyChildren, updateChild } from '../../lib/studentsRepository'
 import type { Grade, Id, Semester, Student } from '../../types/entities'
 
 interface ChildSummary {
@@ -18,6 +18,7 @@ export function ParentDashboard() {
   const [semesters, setSemesters] = useState<Semester[]>([])
   const [summaries, setSummaries] = useState<Map<Id, ChildSummary>>(new Map())
   const [addingChild, setAddingChild] = useState(false)
+  const [editingId, setEditingId] = useState<Id | null>(null)
 
   async function reload() {
     if (!profile) return
@@ -56,6 +57,24 @@ export function ParentDashboard() {
             const grade = grades.find((g) => g.id === child.gradeId)
             const semester = semesters.find((s) => s.id === child.semesterId)
             const summary = summaries.get(child.id)
+            if (editingId === child.id) {
+              return (
+                <div key={child.id} className="w-64">
+                  <ChildForm
+                    grades={grades}
+                    semesters={semesters}
+                    initial={child}
+                    submitLabel="حفظ"
+                    onSubmit={async (values) => {
+                      await updateChild(child.id, values)
+                      setEditingId(null)
+                      reload()
+                    }}
+                    onCancel={() => setEditingId(null)}
+                  />
+                </div>
+              )
+            }
             return (
               <div key={child.id} className="w-64 rounded-xl border border-gray-200 bg-white p-5">
                 <div className="text-lg font-bold text-gray-900">{child.name}</div>
@@ -80,17 +99,24 @@ export function ParentDashboard() {
                 >
                   عرض {child.name}
                 </Link>
+                <button
+                  onClick={() => setEditingId(child.id)}
+                  className="mt-2 w-full rounded-lg bg-gray-100 px-4 py-2 text-center text-sm font-semibold text-gray-700 hover:bg-gray-200"
+                >
+                  تعديل البيانات
+                </button>
               </div>
             )
           })}
 
           <div className="w-64">
             {addingChild ? (
-              <AddChildForm
-                parentId={profile!.id}
+              <ChildForm
                 grades={grades}
                 semesters={semesters}
-                onAdded={() => {
+                submitLabel="إضافة"
+                onSubmit={async (values) => {
+                  await addChild({ parentId: profile!.id, ...values })
                   setAddingChild(false)
                   reload()
                 }}
@@ -111,23 +137,25 @@ export function ParentDashboard() {
   )
 }
 
-function AddChildForm({
-  parentId,
+function ChildForm({
   grades,
   semesters,
-  onAdded,
+  initial,
+  submitLabel,
+  onSubmit,
   onCancel,
 }: {
-  parentId: string
   grades: Grade[]
   semesters: Semester[]
-  onAdded: () => void
+  initial?: Student
+  submitLabel: string
+  onSubmit: (values: { name: string; age: number; gradeId: Id; semesterId: Id }) => Promise<void>
   onCancel: () => void
 }) {
-  const [name, setName] = useState('')
-  const [age, setAge] = useState('')
-  const [gradeId, setGradeId] = useState(grades[0]?.id ?? '')
-  const [semesterId, setSemesterId] = useState('')
+  const [name, setName] = useState(initial?.name ?? '')
+  const [age, setAge] = useState(initial ? String(initial.age) : '')
+  const [gradeId, setGradeId] = useState(initial?.gradeId ?? grades[0]?.id ?? '')
+  const [semesterId, setSemesterId] = useState(initial?.semesterId ?? '')
   const [saving, setSaving] = useState(false)
 
   // الفصول المتاحة للصف المختار؛ وعند تغيير الصف نختار أول فصل فيه.
@@ -138,8 +166,7 @@ function AddChildForm({
     if (!name.trim() || !age || !gradeId || !chosenSemesterId) return
     setSaving(true)
     try {
-      await addChild({ parentId, name: name.trim(), age: Number(age), gradeId, semesterId: chosenSemesterId })
-      onAdded()
+      await onSubmit({ name: name.trim(), age: Number(age), gradeId, semesterId: chosenSemesterId })
     } finally {
       setSaving(false)
     }
@@ -181,7 +208,7 @@ function AddChildForm({
           disabled={saving || !name.trim() || !age || !chosenSemesterId}
           className="rounded-md bg-purple-600 px-4 py-1.5 text-xs font-semibold text-white hover:bg-purple-700 disabled:opacity-40"
         >
-          إضافة
+          {submitLabel}
         </button>
         <button onClick={onCancel} className="rounded-md bg-gray-100 px-4 py-1.5 text-xs font-semibold text-gray-700">
           إلغاء

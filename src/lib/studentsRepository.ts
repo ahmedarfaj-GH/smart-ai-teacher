@@ -47,3 +47,14 @@ export async function addChild(input: {
   if (error) throw error
   return mapStudent(data)
 }
+
+export async function updateChild(
+  studentId: Id,
+  input: { name: string; age: number; gradeId: Id; semesterId: Id },
+): Promise<void> {
+  const { error } = await supabase
+    .from('students')
+    .update({ name: input.name, age: input.age, grade_id: input.gradeId, semester_id: input.semesterId })
+    .eq('id', studentId)
+  if (error) throw error
+}

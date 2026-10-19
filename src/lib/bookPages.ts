@@ -1,4 +1,4 @@
-// روابط موقّعة لصور صفحة من الكتاب (ملفات <bookId>/p27-1.jpg في حاوية book-pages الخاصة).
+// رابط موقّع لصورة صفحة الكتاب كما هي (الملف <bookId>/page-27.jpg في حاوية book-pages الخاصة).
 
 import { supabase } from './supabaseClient'
 import type { Id } from '../types/entities'
@@ -25,7 +25,7 @@ export interface PageImage {
 
 export async function getBookPageImages(bookId: Id, page: string): Promise<PageImage[]> {
   const names = (await listBookImages(bookId))
-    .filter((n) => Number(n.match(/\d+/)?.[0]) === Number(page))
+    .filter((n) => n.startsWith('page-') && Number(n.match(/\d+/)?.[0]) === Number(page))
     .sort()
   if (names.length === 0) return []
   const { data } = await supabase.storage.from('book-pages').createSignedUrls(names.map((n) => `${bookId}/${n}`), 3600)

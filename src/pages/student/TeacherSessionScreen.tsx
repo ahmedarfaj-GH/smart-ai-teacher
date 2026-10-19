@@ -6,7 +6,7 @@ import { loadAudioCache, playSpeechAudio, prefetchAudio, stopAudio } from '../..
 import { getLessonActivities, getLessonById, getUnitById } from '../../lib/curriculumRepository'
 import { endSession, startSession } from '../../lib/learningEngine'
 import { getFinishedActivityIds, getLastFinishedLessonId, saveProgress } from '../../lib/progressRepository'
-import { bookImageUrl, bookPageImageUrl } from '../../lib/bookPages'
+import { bookImageUrl } from '../../lib/bookPages'
 import { getSubjectForStudent, getTeachers } from '../../lib/referenceDataRepository'
 import { getLessonForSession } from '../../lib/sessionContent'
 import { getStudentById } from '../../lib/studentsRepository'
@@ -117,16 +117,10 @@ export function TeacherSessionScreen() {
 
   const current = plans[activityIndex]
   const currentItem = current?.items[itemIndex]
-  const currentPage = current?.activity.page
   const currentAnswer = currentItem ? current?.activity.answers[currentItem] : undefined
 
-  // صورة السؤال الخاصة تُعرض وحدها، وإلا صفحة النشاط كاملة؛ وإن لم يوجد الملف لا تظهر صورة.
-  const imageUrl =
-    bookId && currentPage
-      ? currentAnswer?.image
-        ? bookImageUrl(bookId, currentAnswer.image)
-        : bookPageImageUrl(bookId, currentPage)
-      : undefined
+  // صورة السؤال تظهر فقط للأسئلة التي لها صورة خاصة (answers.image)، وبقية الأسئلة نص فقط.
+  const imageUrl = bookId && currentAnswer?.image ? bookImageUrl(bookId, currentAnswer.image) : undefined
 
   // الصوت الوحيد: صوت أحمد المحفوظ (يُولَّد ويُحفظ أول مرة فقط). لا صوت بديل؛ عند الفشل يظهر زر إعادة المحاولة.
   async function speakBest(text: string) {
@@ -294,7 +288,7 @@ export function TeacherSessionScreen() {
           {imageUrl && imageUrl !== failedImageUrl && (
             <img
               src={imageUrl}
-              alt={`صفحة ${currentPage} من الكتاب`}
+              alt=""
               onError={() => setFailedImageUrl(imageUrl)}
               className="max-h-[28rem] w-full max-w-md rounded-lg border border-gray-200 object-contain"
             />

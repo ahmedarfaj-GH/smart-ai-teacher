@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { TeacherAvatar } from '../../components/TeacherAvatar'
-import { getActivityItems, isAnalysisActivity, isQuestionActivity, isSessionActivity } from '../../lib/activityItems'
+import { getActivityItems, getItemSpeech, isAnalysisActivity, isQuestionActivity, isSessionActivity } from '../../lib/activityItems'
 import { loadAudioCache, playSpeechAudio, prefetchAudio, stopAudio } from '../../lib/audioCache'
 import { getLessonActivities, getLessonById, getUnitById } from '../../lib/curriculumRepository'
 import { endSession, startSession } from '../../lib/learningEngine'
@@ -100,7 +100,7 @@ export function TeacherSessionScreen() {
       )
 
       // نحمّل الصوت المحفوظ (طلب واحد)؛ وما ليس محفوظًا يُولَّد عند أول نطق ويُحفظ للجميع.
-      await loadAudioCache([...planned.flatMap((p) => [...p.items, ...Object.values(p.activity.answers).map((a) => TeacherEngine.getAnswerSpeech(a.word))]), ...TeacherEngine.getFixedPhrases()]).catch(() => 0)
+      await loadAudioCache([...planned.flatMap((p) => [...p.items.map((it, i) => getItemSpeech(p.activity, i, it)), ...Object.values(p.activity.answers).map((a) => TeacherEngine.getAnswerSpeech(a.word))]), ...TeacherEngine.getFixedPhrases()]).catch(() => 0)
 
       const session = await startSession(s.id, subject.id)
       const welcome = TeacherEngine.getWelcomeMessage(currentTeacher.name, s.name)
@@ -109,7 +109,7 @@ export function TeacherSessionScreen() {
       sayText(welcome)
       // نجهّز في الخلفية صوت الترحيب وكل أسطر الجلسة وعباراتها الثابتة (بالتتابع)، حتى لا ينتظر الطفل توليدها عند الضغط.
       const answerSpeeches = planned.flatMap((p) => Object.values(p.activity.answers).map((a) => TeacherEngine.getAnswerSpeech(a.word)))
-      prefetchAudio([welcome, ...planned.flatMap((p) => p.items), ...answerSpeeches, ...TeacherEngine.getFixedPhrases()])
+      prefetchAudio([welcome, ...planned.flatMap((p) => p.items.map((it, i) => getItemSpeech(p.activity, i, it))), ...answerSpeeches, ...TeacherEngine.getFixedPhrases()])
     }
 
     setup()
@@ -143,8 +143,9 @@ export function TeacherSessionScreen() {
     const item = plan.items[index]
     setStep('item')
     // الكتابة: تظهر تعليمات الدفتر وينطق أحمد الكلمة. غيرها: ينطق السطر ويظهر.
-    if (plan.mode === 'write') sayText(TeacherEngine.getWritePrompt(), item)
-    else sayText(item)
+    const spoken = getItemSpeech(plan.activity, index, item)
+    if (plan.mode === 'write') sayText(TeacherEngine.getWritePrompt(), spoken)
+    else sayText(item, spoken)
   }
 
   function startActivity(index: number) {
@@ -295,7 +296,9 @@ export function TeacherSessionScreen() {
           )}
 
           {step !== 'recite' && currentItem && !(current.mode === 'write' && step === 'item' && isDictation) && (
-            <p className="text-center text-3xl font-bold leading-relaxed text-gray-900">{currentItem}</p>
+            <p className="text-center text-3xl font-bold leading-relaxed text-gray-900">
+              {current.mode === 'write' && step === 'check' && currentAnswer ? currentAnswer.word : currentItem}
+            </p>
           )}
           {current.mode === 'write' && step === 'item' && isDictation && (
             <p className="text-center text-lg text-gray-500">🎧 اسمع الكلمة واكتبها في دفترك</p>

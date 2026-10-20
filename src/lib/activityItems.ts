@@ -27,7 +27,7 @@ export function getActivityItems(activity: LessonActivity): string[] {
 
   if (activity.kind === 'dictation' || activity.kind === 'writing') {
     const words = lines.flatMap((l) => l.split(' — ')).map((w) => w.trim()).filter((w) => w && w.length <= 30 && !w.includes('...'))
-    return [...new Set(words)].slice(0, activity.kind === 'dictation' ? 5 : 4)
+    return [...new Set(words)].slice(0, activity.kind === 'dictation' ? 5 : 8)
   }
 
   // سطر فيه أكثر من خليتين (أبي — أمي — أخي...) قائمة كلمات: كل كلمة عنصر. سطر بخليتين (كلمة — حرف مجرّد) نأخذ كلمته فقط.
@@ -37,6 +37,16 @@ export function getActivityItems(activity: LessonActivity): string[] {
     return cells.length === 2 ? [cells[0]] : [l]
   })
   return items.filter((l) => l.length <= 120).slice(0, activity.kind === 'memorization' ? 30 : 12)
+}
+
+// ما ينطقه أحمد لعنصر في الجلسة: في أول عنصر من نشاط قراءة/كتابة يقرأ للطالب المطلوب (عنوان النشاط) ثم العنصر.
+export function getItemSpeech(activity: LessonActivity, index: number, item: string): string {
+  if (index !== 0 || activity.kind === 'dictation' || activity.kind === 'memorization') return item
+  const instruction = activity.title
+    .replace(/\*/g, '')
+    .replace(/^\s*([٠-٩]+\s*[-.]\s*)?(أَوَّلًا|ثَانِيًا|ثَالِثًا|رَابِعًا|خَامِسًا|سَادِسًا|سَابِعًا)?\s*/, '')
+    .trim()
+  return instruction.length > 12 ? `${instruction} ${item}` : item
 }
 
 // نشاط "أقرأ الكلمات ثم أحلّلها إلى مقاطع وحروف": الطالب يحلّل في دفتره ثم يقارن بالتحليل الصحيح.

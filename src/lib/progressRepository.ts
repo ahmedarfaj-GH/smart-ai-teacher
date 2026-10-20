@@ -20,6 +20,14 @@ export async function saveProgress(studentId: Id, activityId: Id, status: Activi
   if (error) throw error
 }
 
+// إعادة تعيين تقدّم الطالب (للتجربة أو لإعادة المنهج للمراجعة): تُحذف أنشطته المنجزة وجلساته.
+export async function resetStudentProgress(studentId: Id): Promise<void> {
+  const progress = await supabase.from('activity_progress').delete().eq('student_id', studentId)
+  if (progress.error) throw progress.error
+  const sessions = await supabase.from('sessions').delete().eq('student_id', studentId)
+  if (sessions.error) throw sessions.error
+}
+
 // آخر درس أنجز فيه الطالب نشاطًا (لإعادته): الأحدث تقدّمًا هو الأول.
 export async function getLastFinishedLessonId(studentId: Id): Promise<Id | undefined> {
   const { data, error } = await supabase

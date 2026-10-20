@@ -3,6 +3,7 @@ import { Link, useParams } from 'react-router-dom'
 import { SubjectActivationModal } from '../../components/SubjectActivationModal'
 import { getGrades, getSemesters, getSubjects, getTeachers } from '../../lib/referenceDataRepository'
 import { activateSubject, getStudentSubject } from '../../lib/studentSubjectRepository'
+import { resetStudentProgress } from '../../lib/progressRepository'
 import { getStudentById } from '../../lib/studentsRepository'
 import type { Grade, Semester, Student, StudentSubject, Subject, Teacher } from '../../types/entities'
 
@@ -79,6 +80,17 @@ export function StudentProfileForParent() {
       </Link>
       <h1 className="mt-2 text-2xl font-bold text-gray-900">{student.name}</h1>
       <p className="text-sm text-gray-500">{grade?.name}</p>
+
+      <button
+        onClick={async () => {
+          if (!window.confirm(`حذف كل تقدم ${student.name} وإعادة المنهج من البداية؟`)) return
+          await resetStudentProgress(student.id)
+          window.alert('تمت إعادة التعيين.')
+        }}
+        className="mt-3 rounded-lg bg-amber-50 px-4 py-2 text-sm font-semibold text-amber-700 hover:bg-amber-100"
+      >
+        إعادة المنهج من البداية (حذف التقدم)
+      </button>
 
       <h2 className="mt-6 text-sm font-semibold text-gray-500">المواد المتاحة</h2>
       <div className="mt-3 flex flex-col gap-3">

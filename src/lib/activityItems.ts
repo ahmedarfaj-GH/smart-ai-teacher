@@ -26,7 +26,10 @@ export function getActivityItems(activity: LessonActivity): string[] {
     .filter((l) => l && !INSTRUCTION_LINE.test(l) && !plain(l).startsWith('الكلمة'))
 
   if (activity.kind === 'dictation' || activity.kind === 'writing') {
-    const words = lines.flatMap((l) => l.split(' — ')).map((w) => w.trim()).filter((w) => w && w.length <= 30 && !w.includes('...'))
+    // سطر فيه خليتان فارغتان أو أكثر (شمسية — ...... — ......) عنوان صف في جدول، وليس كلمة تُكتب.
+    const words = lines
+      .filter((l) => l.split(' — ').filter((c) => c.includes('...')).length < 2)
+      .flatMap((l) => l.split(' — ')).map((w) => w.trim()).filter((w) => w && w.length <= 30 && !w.includes('...'))
     return [...new Set(words)].slice(0, activity.kind === 'dictation' ? 5 : 8)
   }
 

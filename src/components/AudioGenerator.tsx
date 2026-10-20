@@ -1,7 +1,7 @@
 // توليد مسبق لصوت الكتاب (اختياري): يجمع نصوص المسارات المفعَّلة (القراءة والحفظ) وعبارات أحمد الثابتة،
 // ويولّد ما ليس محفوظًا فقط. وأي نص لم يُولَّد هنا يُولَّد تلقائيًا عند أول تشغيل له من أي مستخدم ويُحفظ للجميع.
 import { useEffect, useRef, useState } from 'react'
-import { getActivityItems, isSessionActivity } from '../lib/activityItems'
+import { getActivityItems, getItemSpeech, isSessionActivity } from '../lib/activityItems'
 import { countCached, generateAndStoreAudio } from '../lib/audioCache'
 import { getBookActivities } from '../lib/curriculumRepository'
 import { TeacherEngine } from '../lib/teacherEngine'
@@ -25,7 +25,10 @@ export function AudioGenerator({ bookId }: { bookId: Id }) {
       const activities = await getBookActivities(bookId)
       const bookTexts = activities
         .filter(isSessionActivity)
-        .flatMap((a) => [...getActivityItems(a), ...Object.values(a.answers).map((x) => TeacherEngine.getAnswerSpeech(x.word))])
+        .flatMap((a) => [
+          ...getActivityItems(a).map((it, i) => getItemSpeech(a, i, it)),
+          ...Object.values(a.answers).map((x) => TeacherEngine.getAnswerSpeech(x.word)),
+        ])
       const all = [...new Set([...bookTexts, ...TeacherEngine.getFixedPhrases()])]
       setTexts(all)
       await refresh(all)

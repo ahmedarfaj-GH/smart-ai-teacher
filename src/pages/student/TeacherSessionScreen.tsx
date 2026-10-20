@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { TeacherAvatar } from '../../components/TeacherAvatar'
-import { getActivityItems, isAnalysisActivity, isSessionActivity } from '../../lib/activityItems'
+import { getActivityItems, isAnalysisActivity, isQuestionActivity, isSessionActivity } from '../../lib/activityItems'
 import { loadAudioCache, playSpeechAudio, prefetchAudio, stopAudio } from '../../lib/audioCache'
 import { getLessonActivities, getLessonById, getUnitById } from '../../lib/curriculumRepository'
 import { endSession, startSession } from '../../lib/learningEngine'
@@ -316,7 +316,7 @@ export function TeacherSessionScreen() {
           )}
           {current.mode === 'read' && step === 'item' && (
             <button onClick={handleNext} className={primaryButton}>
-              {currentAnswer ? (isAnalysisActivity(current.activity) ? 'حللتها ✓' : 'أكملتها ✓') : 'قرأتها ✓'}
+              {currentAnswer ? (isAnalysisActivity(current.activity) ? 'حللتها ✓' : isQuestionActivity(current.activity) ? 'أجبت ✓' : 'أكملتها ✓') : 'قرأتها ✓'}
             </button>
           )}
 

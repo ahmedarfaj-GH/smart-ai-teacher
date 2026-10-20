@@ -3,6 +3,7 @@ import { Link, useLocation } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import { createBook, importParsedBook } from '../../lib/curriculumRepository'
 import { parseBookMarkdown } from '../../lib/bookMarkdownParser'
+import { importSolutions } from '../../lib/solutionsImport'
 import { uploadBookImages } from '../../lib/bookPagesUpload'
 import { extractPdfText, type ExtractionProgress } from '../../lib/pdfExtractor'
 import type { Book, Id } from '../../types/entities'
@@ -10,6 +11,7 @@ import type { Book, Id } from '../../types/entities'
 interface LocationState {
   file: File
   imageFiles: File[]
+  solutionsFile: File | null
   title: string
   bookType: string
   part: string
@@ -26,6 +28,7 @@ export function BookProcessingScreen() {
   const [extractedText, setExtractedText] = useState<string | null>(null)
   const [book, setBook] = useState<Book | null>(null)
   const [pagesProgress, setPagesProgress] = useState<{ done: number; total: number } | null>(null)
+  const [solutionsResult, setSolutionsResult] = useState<{ matched: number; total: number } | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [imported, setImported] = useState<{ units: number; lessons: number; activities: number } | null>(null)
   const startedRef = useRef(false)
@@ -62,6 +65,9 @@ export function BookProcessingScreen() {
         // الصور: تُرفع بعد إنشاء الكتاب، وكل نشاط يعرض صور صفحته (برقم الصفحة في اسم الملف).
         if (state!.imageFiles.length > 0) {
           await uploadBookImages(created.id, state!.imageFiles, (done, total) => setPagesProgress({ done, total }))
+        }
+        if (isMarkdown && state!.solutionsFile) {
+          setSolutionsResult(await importSolutions(created.id, await state!.solutionsFile.text()))
         }
         setBook(created)
       } catch (err) {
@@ -122,6 +128,12 @@ export function BookProcessingScreen() {
       {pagesProgress && (
         <p className="mt-4 text-sm text-gray-600">
           {done ? `✓ تم رفع ${pagesProgress.total} صورة` : `جارِ رفع الصور: ${pagesProgress.done} من ${pagesProgress.total || '…'}`}
+        </p>
+      )}
+
+      {solutionsResult && (
+        <p className="mt-2 text-sm text-gray-600">
+          الحلول: تمت مطابقة {solutionsResult.matched} من {solutionsResult.total} مع أسئلة الكتاب.
         </p>
       )}
 

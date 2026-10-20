@@ -26,6 +26,7 @@ export function AddBookScreen() {
   const [source, setSource] = useState('')
   const [file, setFile] = useState<File | null>(null)
   const [imageFiles, setImageFiles] = useState<File[]>([])
+  const [solutionsFile, setSolutionsFile] = useState<File | null>(null)
   const [gradeId, setGradeId] = useState('')
   const [semesterId, setSemesterId] = useState('')
   const [subjectId, setSubjectId] = useState('')
@@ -71,7 +72,7 @@ export function AddBookScreen() {
     e.preventDefault()
     if (!file || !ref || !chosenSubject) return
     navigate('/admin/books/new/processing', {
-      state: { file, imageFiles, title, bookType, part, source, subjectId: chosenSubject.id },
+      state: { file, imageFiles, solutionsFile, title, bookType, part, source, subjectId: chosenSubject.id },
     })
   }
 
@@ -139,6 +140,17 @@ export function AddBookScreen() {
             className="block w-full text-sm text-gray-600 file:mr-3 file:rounded-md file:border-0 file:bg-purple-50 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-purple-700"
           />
           <p className="mt-1 text-xs text-gray-500">اختر عدة صور معًا. اسم الملف page-27.jpg ← صفحة 27، فتظهر الصفحة مع أنشطتها.</p>
+        </div>
+
+        <div>
+          <label className="mb-1 block text-sm font-semibold text-gray-700">ملف الإجابات والحلول (md — اختياري)</label>
+          <input
+            type="file"
+            accept=".md,text/markdown,text/plain"
+            onChange={(e) => setSolutionsFile(e.target.files?.[0] ?? null)}
+            className="block w-full text-sm text-gray-600 file:mr-3 file:rounded-md file:border-0 file:bg-purple-50 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-purple-700"
+          />
+          <p className="mt-1 text-xs text-gray-500">يُطابَق كل حل مع سؤاله في الكتاب حسب الصفحة ونص السؤال.</p>
         </div>
 
         <button

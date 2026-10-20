@@ -44,6 +44,11 @@ export function isAnalysisActivity(activity: LessonActivity): boolean {
   return plain(activity.title + activity.content).includes('احللها الى مقاطع') || plain(activity.title).startsWith('احلل')
 }
 
+// نشاط أسئلة (أجيب/أستخرج...): الطالب يجيب بنفسه ثم يقارن بالجواب.
+export function isQuestionActivity(activity: LessonActivity): boolean {
+  return plain(activity.title).includes('اجيب')
+}
+
 // يظهر في جلسة الطالب: مساره مفعَّل (القراءة والحفظ الآن) وله نص فعلي. الأهداف والأنشطة بلا نص لا تظهر.
 export function isSessionActivity(activity: LessonActivity): boolean {
   return isTrackActive(activity.kind) && getActivityItems(activity).length > 0

@@ -87,6 +87,8 @@ function kindOf(title: string, section: ActivitySection): ActivityKind {
   if (/يملى|املاء/.test(t) || /^احلل .*ثم اكتبها/.test(t)) return 'dictation'
   if (/^انشد/.test(t)) return 'memorization'
   if (/^اكتب|^ارسم دائرة .*ثم اكتبه|^اكمل الحرف/.test(t)) return 'writing'
+  // أسئلة يجيب عنها الطالب شفهيًا: تظهر كقراءة ثم يُعرض الجواب الصحيح بعد "أجبت".
+  if (/^اجيب/.test(t)) return 'reading'
   if (/^اقرا|^اجرد|^احلل|^ارتب الحروف|^اكون/.test(t)) return 'reading'
   if (/^استمع|^اسمي الحرف|^اميز بين الصوت|^احاكي الصوت/.test(t) || t.includes('🎧')) return 'listening'
   if (/^اتحدث|^احاكي|^اعبر|^احكي/.test(t)) return 'speaking'

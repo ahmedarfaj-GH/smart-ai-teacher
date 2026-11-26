@@ -2,7 +2,7 @@
 // ويولّد ما ليس محفوظًا فقط. وأي نص لم يُولَّد هنا يُولَّد تلقائيًا عند أول تشغيل له من أي مستخدم ويُحفظ للجميع.
 import { useEffect, useRef, useState } from 'react'
 import { getActivityItems, getItemSpeech, isSessionActivity } from '../lib/activityItems'
-import { countCached, generateAndStoreAudio } from '../lib/audioCache'
+import { countCached, generateAndStoreAudio, speechParts } from '../lib/audioCache'
 import { getBookActivities } from '../lib/curriculumRepository'
 import { TeacherEngine } from '../lib/teacherEngine'
 import type { Id } from '../types/entities'
@@ -29,7 +29,7 @@ export function AudioGenerator({ bookId }: { bookId: Id }) {
           ...getActivityItems(a).map((it, i) => getItemSpeech(a, i, it)),
           ...Object.values(a.answers).map((x) => TeacherEngine.getAnswerSpeech(x.word)),
         ])
-      const all = [...new Set([...bookTexts, ...TeacherEngine.getFixedPhrases()])]
+      const all = [...new Set([...bookTexts, ...TeacherEngine.getFixedPhrases()].flatMap(speechParts))]
       setTexts(all)
       await refresh(all)
     }

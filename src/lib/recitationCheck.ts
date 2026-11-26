@@ -1,5 +1,9 @@
-// فحص ترديد الطالب للسطر عبر Gemini بالصوت: يُرسل تسجيل الطالب والسطر المطلوب، ويرجع هل نطقه صحيح وأي كلمات تحتاج إعادة.
-// استدعاء واحد صغير لكل محاولة. نفس مفتاح الصوت (VITE_GEMINI_API_KEY) — راجع ملاحظة الأمان في tts.ts.
+// فحص ترديد الطالب للسطر: يرجع هل نطقه صحيح وأي كلمات تحتاج إعادة.
+// الأولوية لـ Groq (Whisper يفرّغ الصوت ثم نقارنه محليًا) إن وُجد مفتاحه، وإلا Gemini بالصوت (نفس مفتاح الصوت VITE_GEMINI_API_KEY).
+// راجع ملاحظة الأمان في tts.ts.
+
+import { isGroqConfigured, transcribeWithGroq } from './groqTranscribe'
+import { compareRecitation } from './recitationMatch'
 
 const API_KEY = import.meta.env.VITE_GEMINI_API_KEY as string | undefined
 const MODEL_ID = (import.meta.env.VITE_GEMINI_AUDIO_MODEL as string | undefined) || 'gemini-3.8-flash'
@@ -17,7 +21,7 @@ export function getLastRecitationError(): string {
 }
 
 export function isRecitationCheckAvailable(): boolean {
-  return Boolean(API_KEY)
+  return Boolean(API_KEY) || isGroqConfigured()
 }
 
 function toBase64(blob: Blob): Promise<string> {
@@ -40,6 +44,19 @@ export async function checkRecitation(wav: Blob, expectedLine: string): Promise<
 }
 
 async function requestRecitation(wav: Blob, expectedLine: string): Promise<RecitationResult> {
+  if (isGroqConfigured()) {
+    try {
+      const heard = await transcribeWithGroq(wav)
+      return { heard, ...compareRecitation(expectedLine, heard) }
+    } catch (err) {
+      if (!API_KEY) throw err // لا بديل: يظهر الخطأ ويعود الزر اليدوي
+      console.error('تعذّر Groq، نجرّب Gemini:', err)
+    }
+  }
+  return requestGeminiRecitation(wav, expectedLine)
+}
+
+async function requestGeminiRecitation(wav: Blob, expectedLine: string): Promise<RecitationResult> {
   if (!API_KEY) throw new Error('VITE_GEMINI_API_KEY غير مضبوط')
 
   const response = await fetch(ENDPOINT, {

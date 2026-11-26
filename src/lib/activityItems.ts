@@ -44,7 +44,9 @@ export function getActivityItems(activity: LessonActivity): string[] {
 
 // ما ينطقه أحمد لعنصر في الجلسة: في أول عنصر من نشاط قراءة/كتابة يقرأ للطالب المطلوب (عنوان النشاط) ثم العنصر.
 export function getItemSpeech(activity: LessonActivity, index: number, item: string): string {
-  if (index !== 0 || activity.kind === 'dictation' || activity.kind === 'memorization') return item
+  // النشيد سطرًا سطرًا: ينطق أحمد السطر ثم يطلب من الطالب ترديده.
+  if (activity.kind === 'memorization') return `${item}. رددها ورايا.`
+  if (index !== 0 || activity.kind === 'dictation') return item
   const instruction = activity.title
     .replace(/\*/g, '')
     .replace(/^\s*([٠-٩]+\s*[-.]\s*)?(أَوَّلًا|ثَانِيًا|ثَالِثًا|رَابِعًا|خَامِسًا|سَادِسًا|سَابِعًا)?\s*/, '')

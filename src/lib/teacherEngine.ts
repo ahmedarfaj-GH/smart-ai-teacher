@@ -22,6 +22,7 @@ const NEXT_ACTIVITY_INTROS = ['خلنا نجرب هذي.', 'جاهز؟ هذا ا
 const WRITE_PROMPT = 'اكتبها في دفترك، ولما تخلص اضغط كتبتها.'
 const CHECK_PROMPT = 'قارن كتابتك بالجملة. إذا كتبتها صح اضغط كتبتها صح.'
 const ANSWER_PROMPT = 'هل كانت إجابتك صحيحة؟'
+const GIVE_UP_PROMPT = 'ما عليك، خلنا نكمل ونرجع لها بعدين.'
 const RECITE_PROMPT = 'الحين سمّع المحفوظ من حفظك لبابا أو ماما.'
 
 function getEncouragement(): string {
@@ -49,12 +50,21 @@ function getAnswerPrompt(): string {
   return ANSWER_PROMPT
 }
 
+function getGiveUpPrompt(): string {
+  return GIVE_UP_PROMPT
+}
+
+// تصحيح ترديد السطر: توجيه واحد — أعد المحاولة مع التركيز على الكلمات التي لم تُنطق جيدًا.
+function getRetryPrompt(wrongWords: string[]): string {
+  return wrongWords.length > 0 ? `ركز في: ${wrongWords.join('، ')}. جرب مرة ثانية.` : 'جرب مرة ثانية وأنا أسمعك.'
+}
+
 function getRecitePrompt(): string {
   return RECITE_PROMPT
 }
 
 function getFixedPhrases(): string[] {
-  return [...ENCOURAGEMENTS, ...PRAISES, ...NEXT_ACTIVITY_INTROS, WRITE_PROMPT, CHECK_PROMPT, RECITE_PROMPT]
+  return [...ENCOURAGEMENTS, ...PRAISES, ...NEXT_ACTIVITY_INTROS, WRITE_PROMPT, CHECK_PROMPT, GIVE_UP_PROMPT, RECITE_PROMPT]
 }
 
 function getHint(level: 1 | 2, hintText: string): string {
@@ -109,6 +119,8 @@ export const TeacherEngine = {
   getWritePrompt,
   getCheckPrompt,
   getAnswerPrompt,
+  getGiveUpPrompt,
+  getRetryPrompt,
   getAnswerSpeech,
   getRecitePrompt,
   getFixedPhrases,

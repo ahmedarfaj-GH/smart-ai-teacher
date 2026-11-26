@@ -1,9 +1,11 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
+import { EchoRecorder } from '../../components/EchoRecorder'
 import { TeacherAvatar } from '../../components/TeacherAvatar'
 import { getActivityItems, getItemSpeech, isAnalysisActivity, isQuestionActivity, isSessionActivity } from '../../lib/activityItems'
 import { loadAudioCache, playSpeechAudio, prefetchAudio, stopAudio } from '../../lib/audioCache'
 import { getLessonActivities, getLessonById, getUnitById } from '../../lib/curriculumRepository'
+import { isRecitationCheckAvailable } from '../../lib/recitationCheck'
 import { endSession, startSession } from '../../lib/learningEngine'
 import { getFinishedActivityIds, getLastFinishedLessonId, saveProgress } from '../../lib/progressRepository'
 import { bookImageUrl } from '../../lib/bookPages'
@@ -323,7 +325,18 @@ export function TeacherSessionScreen() {
             </button>
           )}
 
-          {current.mode === 'memorize' && step === 'item' && (
+          {current.mode === 'memorize' && step === 'item' && isRecitationCheckAvailable() && (
+            <EchoRecorder
+              key={`${activityIndex}-${itemIndex}`}
+              line={currentItem}
+              onAccepted={handleNext}
+              onSkipped={handleNext}
+              say={sayText}
+              primaryButton={primaryButton}
+              secondaryButton={secondaryButton}
+            />
+          )}
+          {current.mode === 'memorize' && step === 'item' && !isRecitationCheckAvailable() && (
             <button onClick={handleNext} className={primaryButton}>
               رددتها ✓
             </button>

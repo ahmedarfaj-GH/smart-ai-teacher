@@ -47,17 +47,27 @@ export function isEchoActivity(activity: LessonActivity): boolean {
   return activity.kind !== 'memorization' && plain(activity.title).includes('انطق')
 }
 
-// ما ينطقه أحمد لعنصر في الجلسة: في أول عنصر من نشاط قراءة/كتابة يقرأ للطالب المطلوب (عنوان النشاط) ثم العنصر.
+// عنصر يعتمد على النطق: كل ما فيه ترديد أو قراءة أو تسميع (نشيد، أستمع وأنطق، نصوص وجمل القراءة).
+// يُستثنى ما له جواب صحيح معروض (أكمل/أجيب/أحلل) فمعيار نجاحه الجواب لا النطق.
+export function isEchoItem(activity: LessonActivity, item: string): boolean {
+  if (activity.answers[item] || item.includes('...')) return false // ناقص أو له جواب: لا ترديد
+  if (activity.kind === 'memorization' || isEchoActivity(activity)) return true
+  return activity.kind === 'reading' && !isQuestionActivity(activity) && !isAnalysisActivity(activity)
+}
+
+// ما ينطقه أحمد لعنصر في الجلسة: في أول عنصر من نشاط قراءة/كتابة يقرأ للطالب المطلوب (عنوان النشاط) ثم العنصر،
+// وللعنصر المعتمد على النطق يختم بدعوة الطالب لقوله.
 export function getItemSpeech(activity: LessonActivity, index: number, item: string): string {
-  if (isEchoActivity(activity)) return `${item}. يلا دورك قولها.`
-  // النشيد سطرًا سطرًا: ينطق أحمد السطر ثم يطلب من الطالب ترديده.
   if (activity.kind === 'memorization') return `${item}. رددها ورايا.`
-  if (index !== 0 || activity.kind === 'dictation') return item
-  const instruction = activity.title
-    .replace(/\*/g, '')
-    .replace(/^\s*([٠-٩]+\s*[-.]\s*)?(أَوَّلًا|ثَانِيًا|ثَالِثًا|رَابِعًا|خَامِسًا|سَادِسًا|سَابِعًا)?\s*/, '')
-    .trim()
-  return instruction.length > 12 ? `${instruction} ${item}` : item
+  let speech = item
+  if (index === 0 && activity.kind !== 'dictation') {
+    const instruction = activity.title
+      .replace(/\*/g, '')
+      .replace(/^\s*([٠-٩]+\s*[-.]\s*)?(أَوَّلًا|ثَانِيًا|ثَالِثًا|رَابِعًا|خَامِسًا|سَادِسًا|سَابِعًا)?\s*/, '')
+      .trim()
+    if (instruction.length > 12) speech = `${instruction} ${item}`
+  }
+  return isEchoItem(activity, item) ? `${speech}. يلا دورك قولها.` : speech
 }
 
 // نشاط "أقرأ الكلمات ثم أحلّلها إلى مقاطع وحروف": الطالب يحلّل في دفتره ثم يقارن بالتحليل الصحيح.

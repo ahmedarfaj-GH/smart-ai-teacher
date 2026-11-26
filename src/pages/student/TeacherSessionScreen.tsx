@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
+import { TypedAnswer } from '../../components/TypedAnswer'
 import { EchoRecorder } from '../../components/EchoRecorder'
 import { TeacherAvatar } from '../../components/TeacherAvatar'
 import { getActivityItems, getItemSpeech, isAnalysisActivity, isEchoItem, isQuestionActivity, isSessionActivity } from '../../lib/activityItems'
@@ -120,6 +121,15 @@ export function TeacherSessionScreen() {
   const current = plans[activityIndex]
   const currentItem = current?.items[itemIndex]
   const currentAnswer = currentItem ? current?.activity.answers[currentItem] : undefined
+  // ما يكتبه الطالب بلوحة المفاتيح: كلمة الإملاء/الكتابة، أو كلمة واحدة مطلوب إكمالها (لا أجوبة الأسئلة الحرة ولا التحليل).
+  const typedTarget =
+    !current || !currentItem || currentItem.includes('...')
+      ? undefined
+      : current.mode === 'write'
+        ? (currentAnswer?.word ?? currentItem)
+        : current.mode === 'read' && currentAnswer && !/[\s-]/.test(currentAnswer.word) && !isQuestionActivity(current.activity) && !isAnalysisActivity(current.activity)
+          ? currentAnswer.word
+          : undefined
 
   // صورة السؤال تظهر فقط للأسئلة التي لها صورة خاصة (answers.image)، وبقية الأسئلة نص فقط.
   const imageUrl = bookId && currentAnswer?.image ? bookImageUrl(bookId, currentAnswer.image) : undefined
@@ -357,6 +367,16 @@ export function TeacherSessionScreen() {
             </button>
           )}
 
+          {typedTarget && step === 'item' && (
+            <TypedAnswer
+              key={`${activityIndex}-${itemIndex}`}
+              expected={typedTarget}
+              onCorrect={advance}
+              onGiveUp={current.mode === 'write' ? advance : handleNext}
+              say={sayText}
+              primaryButton={primaryButton}
+            />
+          )}
           {current.mode === 'write' && step === 'item' && (
             <button onClick={handleNext} className={primaryButton}>
               كتبتها — أريد التحقق

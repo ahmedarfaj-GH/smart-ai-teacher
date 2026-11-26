@@ -18,6 +18,12 @@ function getPlayer(): HTMLAudioElement {
   return player
 }
 
+// النطق المركّب (المطلوب + العنصر + دعوة الطالب) أسطر منفصلة: كل سطر مقطع صوتي قصير يُولَّد ويُحفظ وحده،
+// فيبقى صوت أحمد ثابتًا ويُعاد استخدام مقاطع العناصر المحفوظة بدل توليد نص طويل جديد لكل تركيبة.
+export function speechParts(text: string): string[] {
+  return text.split('\n').map((t) => t.trim()).filter(Boolean)
+}
+
 export async function hashText(text: string): Promise<string> {
   const bytes = new TextEncoder().encode(`${TTS_MODEL}|${TTS_VOICE}|${text.trim()}`)
   const digest = await crypto.subtle.digest('SHA-256', bytes)
@@ -30,7 +36,7 @@ function publicUrl(path: string): string {
 
 // يحمّل من القاعدة الصوتَ المتوفر لهذه النصوص (طلب واحد). يرجع كم نصًّا له صوت جاهز.
 export async function loadAudioCache(texts: string[]): Promise<number> {
-  const unique = [...new Set(texts.map((t) => t.trim()).filter(Boolean))]
+  const unique = [...new Set(texts.flatMap(speechParts))]
   const hashes = await Promise.all(unique.map(hashText))
   if (hashes.length === 0) return 0
 
@@ -111,13 +117,21 @@ async function ensureAudio(text: string): Promise<{ url: string; generated: bool
 export async function playSpeechAudio(text: string): Promise<boolean> {
   stopAudio()
   const token = playToken
+  const [first, ...rest] = speechParts(text)
+  if (!first) return true
   try {
-    const { url } = await ensureAudio(text)
-    if (token !== playToken) return true // طلب أحدث حلّ محله — لا نشغّل شيئًا
-    const audio = getPlayer()
-    audio.src = url
-    tabChannel?.postMessage('playing')
-    await audio.play()
+    const started = await startPart(first, token)
+    if (!started) return true // طلب أحدث حلّ محله
+    // بقية المقاطع تُشغَّل تباعًا في الخلفية؛ المستدعي ينتظر بدء الأول فقط.
+    void (async () => {
+      let current = started
+      for (const part of rest) {
+        if (!(await current.ended)) return
+        const next = await startPart(part, token)
+        if (!next) return
+        current = next
+      }
+    })().catch((err) => console.error('تعذّر تشغيل الصوت:', err))
     return true
   } catch (err) {
     console.error('تعذّر تشغيل الصوت:', err)
@@ -125,9 +139,27 @@ export async function playSpeechAudio(text: string): Promise<boolean> {
   }
 }
 
+// يبدأ تشغيل مقطع واحد ويرجع وعدًا ينتهي عند انتهائه (true) أو عند حلول طلب أحدث محله (false). null إن سُبق قبل البدء.
+async function startPart(text: string, token: number): Promise<{ ended: Promise<boolean> } | null> {
+  const { url } = await ensureAudio(text)
+  if (token !== playToken) return null
+  const audio = getPlayer()
+  audio.src = url
+  tabChannel?.postMessage('playing')
+  const ended = new Promise<boolean>((resolve) => {
+    audio.onended = () => resolve(token === playToken)
+    audio.onpause = () => resolve(token === playToken) // stopAudio يوقف المشغّل فيُفكّ الانتظار
+  })
+  // رفض التشغيل (منع المتصفح) يصل فورًا فيُلتقط؛ وإن تأخر وعد play() لا ننتظر انتهاء المقطع.
+  const playing = audio.play()
+  playing.catch(() => undefined)
+  await Promise.race([playing, new Promise((resolve) => setTimeout(resolve, 300))])
+  return { ended } // مغلّفًا حتى لا يُسطَّح الوعد فننتظر انتهاء المقطع
+}
+
 // تجهيز أصوات السطور القادمة في الخلفية (بالتتابع، بلا تشغيل) حتى يبدأ السطر التالي فورًا عند الضغط.
 export async function prefetchAudio(texts: string[]): Promise<void> {
-  for (const text of texts) {
+  for (const text of texts.flatMap(speechParts)) {
     try {
       await ensureAudio(text)
     } catch {
@@ -145,7 +177,7 @@ export async function generateAndStoreAudio(text: string): Promise<GenerateResul
 
 // كم نصًّا من القائمة له صوت محفوظ (للأدمن، لعرض التقدم).
 export async function countCached(texts: string[]): Promise<number> {
-  const unique = [...new Set(texts.map((t) => t.trim()).filter(Boolean))]
+  const unique = [...new Set(texts.flatMap(speechParts))]
   const hashes = await Promise.all(unique.map(hashText))
   if (hashes.length === 0) return 0
   const { count, error } = await supabase

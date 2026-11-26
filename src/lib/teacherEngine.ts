@@ -43,7 +43,7 @@ function getCheckPrompt(): string {
 
 // أحمد ينطق الكلمة الصحيحة ثم يسأل؛ الجملة كاملة تُنطق وتُحفظ صوتيًا مرة واحدة لكل كلمة.
 function getAnswerSpeech(word: string): string {
-  return `${word}. ${ANSWER_PROMPT}`
+  return `${word}\n${ANSWER_PROMPT}`
 }
 
 function getAnswerPrompt(): string {

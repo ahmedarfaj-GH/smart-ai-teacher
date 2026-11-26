@@ -58,16 +58,16 @@ export function isEchoItem(activity: LessonActivity, item: string): boolean {
 // ما ينطقه أحمد لعنصر في الجلسة: في أول عنصر من نشاط قراءة/كتابة يقرأ للطالب المطلوب (عنوان النشاط) ثم العنصر،
 // وللعنصر المعتمد على النطق يختم بدعوة الطالب لقوله.
 export function getItemSpeech(activity: LessonActivity, index: number, item: string): string {
-  if (activity.kind === 'memorization') return `${item}. رددها ورايا.`
+  if (activity.kind === 'memorization') return `${item}\nرددها ورايا.`
   let speech = item
   if (index === 0 && activity.kind !== 'dictation') {
     const instruction = activity.title
       .replace(/\*/g, '')
       .replace(/^\s*([٠-٩]+\s*[-.]\s*)?(أَوَّلًا|ثَانِيًا|ثَالِثًا|رَابِعًا|خَامِسًا|سَادِسًا|سَابِعًا)?\s*/, '')
       .trim()
-    if (instruction.length > 12) speech = `${instruction} ${item}`
+    if (instruction.length > 12) speech = `${instruction}\n${item}`
   }
-  return isEchoItem(activity, item) ? `${speech}. يلا دورك قولها.` : speech
+  return isEchoItem(activity, item) ? `${speech}\nيلا دورك قولها.` : speech
 }
 
 // نشاط "أقرأ الكلمات ثم أحلّلها إلى مقاطع وحروف": الطالب يحلّل في دفتره ثم يقارن بالتحليل الصحيح.

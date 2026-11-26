@@ -4,7 +4,7 @@ import { TypedAnswer } from '../../components/TypedAnswer'
 import { EchoRecorder } from '../../components/EchoRecorder'
 import { TeacherAvatar } from '../../components/TeacherAvatar'
 import { getActivityItems, getItemSpeech, isAnalysisActivity, isEchoItem, isQuestionActivity, isSessionActivity } from '../../lib/activityItems'
-import { loadAudioCache, playSpeechAudio, prefetchAudio, stopAudio } from '../../lib/audioCache'
+import { getLastAudioError, loadAudioCache, playSpeechAudio, prefetchAudio, stopAudio } from '../../lib/audioCache'
 import { getLessonActivities, getLessonById, getUnitById } from '../../lib/curriculumRepository'
 import { isRecitationCheckAvailable } from '../../lib/recitationCheck'
 import { endSession, startSession } from '../../lib/learningEngine'
@@ -282,6 +282,11 @@ export function TeacherSessionScreen() {
           className="w-full rounded-lg bg-amber-50 p-3 text-center text-sm font-semibold text-amber-700 hover:bg-amber-100"
         >
           ما قدرت أسمعك صوتي. اضغط هنا وأحاول مرة ثانية
+          {getLastAudioError() && (
+            <span dir="ltr" className="mt-1 block break-words text-[10px] font-normal text-amber-600">
+              {getLastAudioError().slice(0, 220)}
+            </span>
+          )}
         </button>
       )}
 

@@ -21,7 +21,7 @@ import type { Id, Lesson, LessonActivity, Student, Teacher } from '../../types/e
 // read = قراءة: يسمع ويقرأ — memorize = حفظ: يسمع كل سطر ويردده (ويعيد متى شاء) ثم يسمّع لولي أمره
 // write = كتابة/إملاء بالدفتر: يسمع، يكتب على ورقه، ثم "أريد التحقق" فتظهر له الجملة ليقارن بنفسه.
 type Mode = 'read' | 'memorize' | 'write'
-type Step = 'item' | 'check' | 'answer' | 'recite'
+type Step = 'item' | 'check' | 'answer' | 'pronounce' | 'recite'
 
 const MODE_OF_TRACK: Partial<Record<Track, Mode>> = { reading: 'read', memorization: 'memorize', writing: 'write' }
 const OVERVIEW_TRACKS: Track[] = ['reading', 'memorization', 'writing', 'paper']
@@ -123,7 +123,7 @@ export function TeacherSessionScreen() {
   const currentAnswer = currentItem ? current?.activity.answers[currentItem] : undefined
   // ما يكتبه الطالب بلوحة المفاتيح: كلمة الإملاء/الكتابة، أو كلمة واحدة مطلوب إكمالها (لا أجوبة الأسئلة الحرة ولا التحليل).
   const typedTarget =
-    !current || !currentItem || currentItem.includes('...')
+    !current || !currentItem || (currentItem.includes('...') && !currentAnswer)
       ? undefined
       : current.mode === 'write'
         ? (currentAnswer?.word ?? currentItem)
@@ -201,6 +201,16 @@ export function TeacherSessionScreen() {
       return
     }
     await finishActivity()
+  }
+
+  // بعد اكتمال الكلمة (كتابة أو جواب): ينطقها أحمد كاملة ويطلب من الطالب نطقها، ثم ننتقل.
+  function goPronounce(word: string) {
+    if (!isRecitationCheckAvailable()) {
+      advance()
+      return
+    }
+    setStep('pronounce')
+    sayText(word, TeacherEngine.getPronounceSpeech(word))
   }
 
   async function handleNext() {
@@ -320,13 +330,27 @@ export function TeacherSessionScreen() {
             <>
               <p className="text-center text-3xl font-bold leading-relaxed text-purple-700">{currentAnswer.word}</p>
               <div className="flex gap-3">
-                <button onClick={advance} className={primaryButton}>
+                <button onClick={() => (typedTarget ? goPronounce(typedTarget) : advance())} className={primaryButton}>
                   نعم
                 </button>
-                <button onClick={advance} className={secondaryButton}>
+                <button onClick={() => (typedTarget ? goPronounce(typedTarget) : advance())} className={secondaryButton}>
                   لا
                 </button>
               </div>
+            </>
+          )}
+          {current.mode === 'read' && step === 'pronounce' && typedTarget && (
+            <>
+              <p className="text-center text-3xl font-bold leading-relaxed text-purple-700">{typedTarget}</p>
+              <EchoRecorder
+                key={`pronounce-${activityIndex}-${itemIndex}`}
+                line={typedTarget}
+                onAccepted={advance}
+                onSkipped={advance}
+                say={sayText}
+                primaryButton={primaryButton}
+                secondaryButton={secondaryButton}
+              />
             </>
           )}
           {current.mode === 'read' && step === 'item' && !(isEchoItem(current.activity, currentItem) && isRecitationCheckAvailable()) && (
@@ -371,7 +395,8 @@ export function TeacherSessionScreen() {
             <TypedAnswer
               key={`${activityIndex}-${itemIndex}`}
               expected={typedTarget}
-              onCorrect={advance}
+              placeholder={current.mode === 'read' ? 'اكتب الكلمة كاملة' : undefined}
+              onCorrect={current.mode === 'write' ? advance : () => goPronounce(typedTarget)}
               onGiveUp={current.mode === 'write' ? advance : handleNext}
               say={sayText}
               primaryButton={primaryButton}

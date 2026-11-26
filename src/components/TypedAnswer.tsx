@@ -24,9 +24,10 @@ interface Props {
   onGiveUp: () => void // استنفد المحاولات بعد أن رأى الإجابة الصحيحة
   say: (shown: string, spoken?: string) => void
   primaryButton: string
+  placeholder?: string
 }
 
-export function TypedAnswer({ expected, onCorrect, onGiveUp, say, primaryButton }: Props) {
+export function TypedAnswer({ expected, onCorrect, onGiveUp, say, primaryButton, placeholder }: Props) {
   const [typed, setTyped] = useState('')
   const [attempts, setAttempts] = useState(0)
   const [state, setState] = useState<TypedState>('typing')
@@ -85,7 +86,7 @@ export function TypedAnswer({ expected, onCorrect, onGiveUp, say, primaryButton 
           setTyped(e.target.value)
           if (state === 'wrong') setState('typing')
         }}
-        placeholder="اكتبها هنا"
+        placeholder={placeholder ?? 'اكتبها هنا'}
         className={`w-full max-w-xs rounded-xl border-2 px-4 py-3 text-center text-2xl font-bold ${
           state === 'wrong' ? 'border-red-400' : 'border-purple-200'
         }`}

@@ -117,26 +117,38 @@ async function ensureAudio(text: string): Promise<{ url: string; generated: bool
 export async function playSpeechAudio(text: string): Promise<boolean> {
   stopAudio()
   const token = playToken
-  const [first, ...rest] = speechParts(text)
-  if (!first) return true
-  try {
-    const started = await startPart(first, token)
-    if (!started) return true // طلب أحدث حلّ محله
-    // بقية المقاطع تُشغَّل تباعًا في الخلفية؛ المستدعي ينتظر بدء الأول فقط.
-    void (async () => {
-      let current = started
-      for (const part of rest) {
-        if (!(await current.ended)) return
-        const next = await startPart(part, token)
-        if (!next) return
-        current = next
-      }
-    })().catch((err) => console.error('تعذّر تشغيل الصوت:', err))
-    return true
-  } catch (err) {
-    console.error('تعذّر تشغيل الصوت:', err)
-    return token !== playToken
+  const parts = speechParts(text)
+  if (parts.length === 0) return true
+
+  // مقطع تعذّر توليده أو تشغيله يُتخطّى ونكمل بالبقية؛ الفشل هو ألا يُشغَّل أي مقطع.
+  let started: { ended: Promise<boolean> } | null = null
+  let next = 0
+  for (; next < parts.length && !started; next++) {
+    try {
+      started = await startPart(parts[next], token)
+      if (!started) return true // طلب أحدث حلّ محله
+    } catch (err) {
+      console.error('تعذّر تشغيل مقطع صوتي:', parts[next], err)
+    }
   }
+  if (!started) return token !== playToken
+
+  // بقية المقاطع تُشغَّل تباعًا في الخلفية؛ المستدعي ينتظر بدء الأول فقط.
+  const first = started
+  void (async () => {
+    let current = first
+    for (const part of parts.slice(next)) {
+      if (!(await current.ended)) return
+      try {
+        const following = await startPart(part, token)
+        if (!following) return
+        current = following
+      } catch (err) {
+        console.error('تعذّر تشغيل مقطع صوتي:', part, err)
+      }
+    }
+  })()
+  return true
 }
 
 // يبدأ تشغيل مقطع واحد ويرجع وعدًا ينتهي عند انتهائه (true) أو عند حلول طلب أحدث محله (false). null إن سُبق قبل البدء.

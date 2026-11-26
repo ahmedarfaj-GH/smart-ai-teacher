@@ -62,7 +62,7 @@ export function getItemSpeech(activity: LessonActivity, index: number, item: str
   let speech = item
   if (index === 0 && activity.kind !== 'dictation') {
     const instruction = activity.title
-      .replace(/\*/g, '')
+      .replace(/[*:]/g, '')
       .replace(/^\s*([٠-٩]+\s*[-.]\s*)?(أَوَّلًا|ثَانِيًا|ثَالِثًا|رَابِعًا|خَامِسًا|سَادِسًا|سَابِعًا)?\s*/, '')
       .trim()
     if (instruction.length > 12) speech = `${instruction}\n${item}`

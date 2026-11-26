@@ -42,8 +42,14 @@ export function getActivityItems(activity: LessonActivity): string[] {
   return items.filter((l) => l.length <= 120).slice(0, activity.kind === 'memorization' ? 30 : 12)
 }
 
+// نشاط "أستمع وأنطق": ينطق أحمد الكلمة ثم يقول للطالب "يلا دورك قولها" ويفحص الميكروفون نطقه.
+export function isEchoActivity(activity: LessonActivity): boolean {
+  return activity.kind !== 'memorization' && plain(activity.title).includes('انطق')
+}
+
 // ما ينطقه أحمد لعنصر في الجلسة: في أول عنصر من نشاط قراءة/كتابة يقرأ للطالب المطلوب (عنوان النشاط) ثم العنصر.
 export function getItemSpeech(activity: LessonActivity, index: number, item: string): string {
+  if (isEchoActivity(activity)) return `${item}. يلا دورك قولها.`
   // النشيد سطرًا سطرًا: ينطق أحمد السطر ثم يطلب من الطالب ترديده.
   if (activity.kind === 'memorization') return `${item}. رددها ورايا.`
   if (index !== 0 || activity.kind === 'dictation') return item

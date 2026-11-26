@@ -54,6 +54,15 @@ export function stopAudio(): void {
   player?.pause()
 }
 
+// آخر سبب فشل في النطق (يُعرض للمستخدم ليُعرف سبب الفشل: مفتاح أو حصة أو نموذج...).
+let lastAudioError = ''
+export function getLastAudioError(): string {
+  return lastAudioError
+}
+function rememberAudioError(err: unknown): void {
+  lastAudioError = err instanceof Error ? err.message : String((err as { message?: string })?.message ?? err)
+}
+
 // تبويب آخر من الموقع بدأ نطقًا ← نوقف صوت هذا التبويب (تبويبات مفتوحة سابقًا كانت تُسمع معًا).
 const tabChannel = typeof BroadcastChannel !== 'undefined' ? new BroadcastChannel('ahmed-audio') : null
 if (tabChannel) tabChannel.onmessage = () => stopAudio()
@@ -129,6 +138,7 @@ export async function playSpeechAudio(text: string): Promise<boolean> {
       if (!started) return true // طلب أحدث حلّ محله
     } catch (err) {
       console.error('تعذّر تشغيل مقطع صوتي:', parts[next], err)
+      rememberAudioError(err)
     }
   }
   if (!started) return token !== playToken
@@ -145,6 +155,7 @@ export async function playSpeechAudio(text: string): Promise<boolean> {
         current = following
       } catch (err) {
         console.error('تعذّر تشغيل مقطع صوتي:', part, err)
+        rememberAudioError(err)
       }
     }
   })()

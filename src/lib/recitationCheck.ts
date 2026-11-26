@@ -11,6 +11,11 @@ export interface RecitationResult {
   wrongWords: string[] // كلمات من السطر المطلوب نُطقت خطأ أو نقصت (بلا تشكيل كما وردت في السطر)
 }
 
+let lastRecitationError = ''
+export function getLastRecitationError(): string {
+  return lastRecitationError
+}
+
 export function isRecitationCheckAvailable(): boolean {
   return Boolean(API_KEY)
 }
@@ -25,6 +30,16 @@ function toBase64(blob: Blob): Promise<string> {
 }
 
 export async function checkRecitation(wav: Blob, expectedLine: string): Promise<RecitationResult> {
+  lastRecitationError = ''
+  try {
+    return await requestRecitation(wav, expectedLine)
+  } catch (err) {
+    lastRecitationError = err instanceof Error ? err.message : String(err)
+    throw err
+  }
+}
+
+async function requestRecitation(wav: Blob, expectedLine: string): Promise<RecitationResult> {
   if (!API_KEY) throw new Error('VITE_GEMINI_API_KEY غير مضبوط')
 
   const response = await fetch(ENDPOINT, {

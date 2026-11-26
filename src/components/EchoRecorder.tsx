@@ -3,7 +3,7 @@
 
 import { useState } from 'react'
 import { stopAudio } from '../lib/audioCache'
-import { checkRecitation } from '../lib/recitationCheck'
+import { checkRecitation, getLastRecitationError } from '../lib/recitationCheck'
 import { startRecording, type Recording } from '../lib/speechRecorder'
 import { TeacherEngine } from '../lib/teacherEngine'
 
@@ -106,6 +106,11 @@ export function EchoRecorder({ line, onAccepted, onSkipped, say, primaryButton, 
         <>
           <p className="rounded-lg bg-amber-50 p-3 text-center text-sm font-semibold text-amber-700">
             ما قدرت أسمعك. تأكد أن المايك مفتوح للموقع.
+            {getLastRecitationError() && (
+              <span dir="ltr" className="mt-1 block break-words text-[10px] font-normal text-amber-600">
+                {getLastRecitationError().slice(0, 220)}
+              </span>
+            )}
           </p>
           <button onClick={onAccepted} className={secondaryButton}>
             رددتها ✓

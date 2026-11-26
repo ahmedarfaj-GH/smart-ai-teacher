@@ -46,6 +46,11 @@ function getAnswerSpeech(word: string): string {
   return `${word}\n${ANSWER_PROMPT}`
 }
 
+// بعد اكتمال الكلمة: ينطقها أحمد كاملة ثم يطلب من الطالب نطقها (مقطعان: الكلمة المحفوظة ثم الدعوة).
+function getPronounceSpeech(word: string): string {
+  return `${word}\nيلا دورك قولها.`
+}
+
 function getAnswerPrompt(): string {
   return ANSWER_PROMPT
 }
@@ -64,7 +69,7 @@ function getRecitePrompt(): string {
 }
 
 function getFixedPhrases(): string[] {
-  return [...ENCOURAGEMENTS, ...PRAISES, ...NEXT_ACTIVITY_INTROS, WRITE_PROMPT, CHECK_PROMPT, GIVE_UP_PROMPT, RECITE_PROMPT]
+  return [...ENCOURAGEMENTS, ...PRAISES, ...NEXT_ACTIVITY_INTROS, WRITE_PROMPT, CHECK_PROMPT, 'يلا دورك قولها.', GIVE_UP_PROMPT, RECITE_PROMPT]
 }
 
 function getHint(level: 1 | 2, hintText: string): string {
@@ -119,6 +124,7 @@ export const TeacherEngine = {
   getWritePrompt,
   getCheckPrompt,
   getAnswerPrompt,
+  getPronounceSpeech,
   getGiveUpPrompt,
   getRetryPrompt,
   getAnswerSpeech,
